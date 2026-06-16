@@ -1,0 +1,139 @@
+{
+  "metrics": {
+    "status": "SAFE",
+    "score": 100,
+    "gapToSafety": 0,
+    "runwayDays": 112,
+    "safeUntilDate": "2026-10-05",
+    "projectedBalanceAfterPayments": 1429220,
+    "monthlyBurnRate": 380000
+  },
+  "brief": {
+    "status": "SAFE",
+    "score": 100,
+    "gapToSafety": 0,
+    "gapWorkDays": 0,
+    "runwayDays": 112,
+    "safeUntilDate": "2026-10-05",
+    "gapMessage": "今のペースなら問題ありません",
+    "workDaysMessage": "追加稼働は不要です",
+    "primaryAction": {
+      "priority": 1,
+      "id": "cancel-sub-dropbox",
+      "title": "Dropbox Professional を解約（年間 ¥23,760 削減）",
+      "impactYen": 23760,
+      "category": "subscription",
+      "templateReason": "過去90日間の利用実績がありません（最終利用: 120日前）"
+    },
+    "priorityActions": [
+      {
+        "priority": 1,
+        "id": "cancel-sub-dropbox",
+        "title": "Dropbox Professional を解約（年間 ¥23,760 削減）",
+        "impactYen": 23760,
+        "category": "subscription",
+        "templateReason": "過去90日間の利用実績がありません（最終利用: 120日前）"
+      },
+      {
+        "priority": 2,
+        "id": "subscription-cleanup",
+        "title": "サブスク整理（月 ¥12,860 改善）",
+        "impactYen": 154320,
+        "category": "subscription",
+        "templateReason": "3 件の解約候補を検出"
+      },
+      {
+        "priority": 3,
+        "id": "tax-reserve",
+        "title": "税金積立 ¥125,000 を開始",
+        "impactYen": 125000,
+        "category": "tax",
+        "templateReason": "今月収入の10%を納税準備口座へ"
+      }
+    ],
+    "subscriptionOptimization": {
+      "monthlySavingPotential": 12860,
+      "yearlySavingPotential": 154320,
+      "candidates": [
+        {
+          "subscriptionId": "sub-dropbox",
+          "name": "Dropbox Professional",
+          "monthlyCost": 1980,
+          "yearlySaving": 23760,
+          "reason": "過去90日間の利用実績がありません（最終利用: 120日前）",
+          "priority": 1
+        },
+        {
+          "subscriptionId": "sub-adobe",
+          "name": "Adobe Creative Cloud",
+          "monthlyCost": 7780,
+          "yearlySaving": 93360,
+          "reason": "利用頻度が低いです（利用率 15%）。代替ツールで代替可能",
+          "priority": 2
+        },
+        {
+          "subscriptionId": "sub-zoom",
+          "name": "Zoom Pro",
+          "monthlyCost": 2100,
+          "yearlySaving": 25200,
+          "reason": "利用頻度が低いです（利用率 24%）。代替ツールで代替可能",
+          "priority": 2
+        }
+      ],
+      "duplicateCategories": ["design"]
+    },
+    "calendarMarkers": [
+      { "date": "2026-06-17", "type": "work_recommended", "label": "FleetMetric: 余裕あり — 休暇可" },
+      { "date": "2026-06-20", "type": "bill", "label": "オフィス家賃 ¥88,000", "countdownDays": 5, "amount": 88000 },
+      { "date": "2026-06-25", "type": "bill", "label": "ビジネスカード引落 ¥125,000", "countdownDays": 10, "amount": 125000 }
+    ],
+    "paymentWarnings": [],
+    "nextBigPayment": { "name": "ビジネスカード引落", "daysUntil": 10, "amount": 125000 }
+  },
+  "kpis": {
+    "projectedIncome": 1250000,
+    "confirmedExpenses": 420000,
+    "projectedBalance": 1429220
+  },
+  "fleetMetric": {
+    "lastSync": "2026-06-15T22:34:00",
+    "syncCount": 12,
+    "status": "normal",
+    "syncMethod": "CSV",
+    "monthlyRevenueSynced": 1250000,
+    "recommendedWorkDays": 0
+  },
+  "surplus": {
+    "amount": 320000,
+    "investmentCandidate": 150000,
+    "taxReserveSuggested": 125000,
+    "aiDevBudgetSuggested": 50000
+  },
+  "simulations": [
+    {
+      "id": "cancel-dropbox",
+      "title": "Dropbox Professional を解約した場合",
+      "impacts": ["年間改善: ¥23,760", "Runway: 112日 → 118日"]
+    },
+    {
+      "id": "work-2days",
+      "title": "あと2日稼働した場合（FleetMetric Pro）",
+      "impacts": ["Safety: 100 → 100（維持）", "Runway: 112日 → 125日"]
+    },
+    {
+      "id": "tax-10pct",
+      "title": "税金積立を月10%に変更した場合",
+      "impacts": ["年末不足リスク: -35%", "Runway: 112日 → 108日"]
+    }
+  ],
+  "copy": {
+    "adviceText": "今のペースなら問題ありません。余剰 ¥320,000 を税金積立・AI開発予算に回せます。",
+    "priorityActionsText": [
+      "Dropbox Professional を解約（年間 ¥23,760 削減）",
+      "サブスク整理（月 ¥12,860 改善）",
+      "税金積立 ¥125,000 を開始"
+    ],
+    "subscriptionComment": "Dropbox Professional 解約で年間 ¥23,760 削減可能",
+    "usedFallback": true
+  }
+}

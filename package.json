@@ -1,0 +1,19 @@
+{
+  "name": "ai-cashflow-commander",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w @acc/finance-core && npm run build -w @acc/worker",
+    "test": "npm run test -w @acc/finance-core",
+    "dev": "npm run dev -w @acc/worker",
+    "preview": "node scripts/preview-server.mjs",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  }
+}

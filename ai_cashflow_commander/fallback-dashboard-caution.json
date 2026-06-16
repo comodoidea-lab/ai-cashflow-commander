@@ -1,0 +1,104 @@
+{
+  "metrics": {
+    "status": "CAUTION",
+    "score": 82,
+    "gapToSafety": 18000,
+    "runwayDays": 34,
+    "safeUntilDate": "2026-07-19",
+    "projectedBalanceAfterPayments": 882000,
+    "monthlyBurnRate": 380000
+  },
+  "brief": {
+    "status": "CAUTION",
+    "score": 82,
+    "gapToSafety": 18000,
+    "gapWorkDays": 3,
+    "runwayDays": 34,
+    "safeUntilDate": "2026-07-19",
+    "gapMessage": "あと ¥18,000 で安全圏です",
+    "workDaysMessage": "あと 3 日の追加稼働を推奨します",
+    "primaryAction": {
+      "priority": 1,
+      "id": "close-gap",
+      "title": "追加収入 ¥18,000 を確保",
+      "impactYen": 18000,
+      "category": "income",
+      "templateReason": "FleetMetric Pro であと2日稼働すれば安全圏に到達"
+    },
+    "priorityActions": [
+      {
+        "priority": 1,
+        "id": "close-gap",
+        "title": "追加収入 ¥18,000 を確保",
+        "impactYen": 18000,
+        "category": "income",
+        "templateReason": "FleetMetric Pro であと2日稼働すれば安全圏"
+      },
+      {
+        "priority": 2,
+        "id": "cancel-sub-dropbox",
+        "title": "Dropbox Professional を解約（年間 ¥23,760 削減）",
+        "impactYen": 23760,
+        "category": "subscription",
+        "templateReason": "過去90日間の利用実績なし"
+      },
+      {
+        "priority": 3,
+        "id": "tax-reserve",
+        "title": "税金積立 ¥125,000 を開始",
+        "impactYen": 125000,
+        "category": "tax",
+        "templateReason": "今月収入の10%を納税準備口座へ"
+      }
+    ],
+    "subscriptionOptimization": {
+      "monthlySavingPotential": 12860,
+      "yearlySavingPotential": 154320,
+      "candidates": [
+        {
+          "subscriptionId": "sub-dropbox",
+          "name": "Dropbox Professional",
+          "monthlyCost": 1980,
+          "yearlySaving": 23760,
+          "reason": "過去90日間の利用実績がありません",
+          "priority": 1
+        }
+      ],
+      "duplicateCategories": ["design"]
+    },
+    "calendarMarkers": [
+      { "date": "2026-06-17", "type": "work_recommended", "label": "FleetMetric: 追加稼働推奨" },
+      { "date": "2026-06-20", "type": "withdrawal_warning", "label": "家賃 引落まで3日", "countdownDays": 3, "amount": 88000 },
+      { "date": "2026-06-25", "type": "bill", "label": "カード引落 ¥125,000", "countdownDays": 10, "amount": 125000 }
+    ],
+    "paymentWarnings": [
+      { "name": "オフィス家賃", "dueDate": "2026-06-20", "daysUntil": 3, "amount": 88000 }
+    ],
+    "nextBigPayment": { "name": "ビジネスカード引落", "daysUntil": 10, "amount": 125000 }
+  },
+  "kpis": {
+    "projectedIncome": 1250000,
+    "confirmedExpenses": 420000,
+    "projectedBalance": 882000
+  },
+  "fleetMetric": {
+    "lastSync": "2026-06-15T22:34:00",
+    "syncCount": 12,
+    "status": "normal",
+    "syncMethod": "CSV",
+    "monthlyRevenueSynced": 1250000,
+    "recommendedWorkDays": 2
+  },
+  "surplus": { "amount": 0, "investmentCandidate": 0, "taxReserveSuggested": 125000, "aiDevBudgetSuggested": 0 },
+  "simulations": [
+    { "id": "cancel-dropbox", "title": "Dropbox Professional を解約した場合", "impacts": ["年間改善: ¥23,760", "Runway: 34日 → 40日"] },
+    { "id": "work-2days", "title": "あと2日稼働した場合（FleetMetric Pro）", "impacts": ["Safety: 82 → 91", "Runway: 34日 → 51日", "Gap: ¥18,000 → ¥0"] },
+    { "id": "tax-10pct", "title": "税金積立を月10%に変更した場合", "impacts": ["年末不足リスク: -35%", "Runway: 34日 → 31日"] }
+  ],
+  "copy": {
+    "adviceText": "あと ¥18,000 で安全圏。FleetMetric Pro であと2日稼働を推奨。",
+    "priorityActionsText": ["追加収入 ¥18,000 を確保", "Dropbox 解約で年間 ¥23,760 削減", "税金積立 ¥125,000 開始"],
+    "subscriptionComment": "Dropbox 解約で年間 ¥23,760 削減可能",
+    "usedFallback": true
+  }
+}

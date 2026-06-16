@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+
+<html class="light" lang="ja"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AI Cashflow Commander - 明細取り込み</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "error": "#ba1a1a",
+                    "secondary-container": "#d0e1fb",
+                    "surface-container": "#edeef0",
+                    "status-caution": "#F59E0B",
+                    "on-primary-fixed-variant": "#3c475a",
+                    "on-primary-fixed": "#111c2d",
+                    "tertiary-container": "#35260c",
+                    "on-primary": "#ffffff",
+                    "on-tertiary-container": "#a38c6a",
+                    "on-surface-variant": "#45474c",
+                    "on-secondary": "#ffffff",
+                    "error-container": "#ffdad6",
+                    "surface": "#f8f9fb",
+                    "surface-white": "#FFFFFF",
+                    "on-secondary-fixed-variant": "#38485d",
+                    "secondary-fixed": "#d3e4fe",
+                    "on-error-container": "#93000a",
+                    "inverse-primary": "#bcc7de",
+                    "tertiary": "#1e1200",
+                    "background": "#f8f9fb",
+                    "on-tertiary-fixed-variant": "#564427",
+                    "secondary-fixed-dim": "#b7c8e1",
+                    "surface-container-lowest": "#ffffff",
+                    "status-danger": "#EF4444",
+                    "primary": "#091426",
+                    "inverse-surface": "#2e3132",
+                    "inverse-on-surface": "#f0f1f3",
+                    "outline": "#75777d",
+                    "surface-variant": "#e1e2e4",
+                    "on-primary-container": "#8590a6",
+                    "surface-container-low": "#f3f4f6",
+                    "surface-bright": "#f8f9fb",
+                    "tertiary-fixed-dim": "#ddc39d",
+                    "on-background": "#191c1e",
+                    "status-safe": "#10B981",
+                    "secondary": "#505f76",
+                    "on-secondary-fixed": "#0b1c30",
+                    "surface-dim": "#d9dadc",
+                    "primary-fixed": "#d8e3fb",
+                    "on-error": "#ffffff",
+                    "on-tertiary": "#ffffff",
+                    "surface-container-highest": "#e1e2e4",
+                    "on-surface": "#191c1e",
+                    "tertiary-fixed": "#fadfb8",
+                    "surface-container-high": "#e7e8ea",
+                    "outline-variant": "#c5c6cd",
+                    "surface-tint": "#545f73",
+                    "primary-container": "#1e293b",
+                    "border-subtle": "#E5E7EB",
+                    "on-tertiary-fixed": "#271902",
+                    "on-secondary-container": "#54647a",
+                    "primary-fixed-dim": "#bcc7de"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "sm": "8px",
+                    "lg": "24px",
+                    "container-max": "1280px",
+                    "base": "4px",
+                    "xl": "40px",
+                    "md": "16px",
+                    "gutter": "24px",
+                    "xs": "4px"
+            },
+            "fontFamily": {
+                    "label-md": ["Inter"],
+                    "numeric-data": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "body-md": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "body-lg": ["Inter"]
+            },
+            "fontSize": {
+                    "label-md": ["12px", {"lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "numeric-data": ["20px", {"lineHeight": "1", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "headline-md": ["24px", {"lineHeight": "1.4", "fontWeight": "600"}],
+                    "body-sm": ["14px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                    "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                    "display-lg": ["48px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-lg": ["32px", {"lineHeight": "1.3", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        .glass-nav { backdrop-filter: blur(12px); background-color: rgba(255, 255, 255, 0.8); }
+        .bento-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .bento-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        .active-nav-border { border-left: 4px solid #091426; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface min-h-screen">
+<!-- TopAppBar -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-gutter h-16 bg-surface-white shadow-sm dark:bg-surface-container-lowest">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary font-bold text-headline-md">account_balance_wallet</span>
+<h1 class="text-headline-md font-headline-md font-bold text-primary">AI Cashflow Commander</h1>
+</div>
+<div class="flex items-center gap-4">
+<button class="hover:opacity-80 transition-opacity duration-200">
+<span class="material-symbols-outlined text-secondary">notifications</span>
+</button>
+<div class="w-8 h-8 rounded-full bg-primary-fixed flex items-center justify-center text-primary font-bold text-label-md">
+                AC
+            </div>
+</div>
+</header>
+<!-- Side Navigation (Desktop) -->
+<nav class="hidden lg:flex flex-col fixed left-0 top-0 h-full w-60 z-40 bg-surface-container-lowest shadow-lg pt-20">
+<div class="px-6 mb-8">
+<div class="flex items-center gap-3 mb-2">
+<div class="w-10 h-10 rounded-xl bg-secondary-fixed flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">person</span>
+</div>
+<div>
+<p class="font-bold text-primary text-body-md">Alex Commander</p>
+<p class="text-secondary text-label-md">Peace: High</p>
+</div>
+</div>
+<span class="text-[10px] bg-primary text-white px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">Premium Plan</span>
+</div>
+<div class="flex flex-col space-y-1">
+<a class="text-secondary pl-4 py-3 hover:bg-surface-container transition-colors flex items-center gap-3" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="text-primary font-bold border-l-4 border-primary pl-4 py-3 flex items-center gap-3 transition-transform duration-200 translate-x-1" href="#">
+<span class="material-symbols-outlined">swap_horiz</span>
+<span class="font-label-md text-label-md">Cashflow</span>
+</a>
+<a class="text-secondary pl-4 py-3 hover:bg-surface-container transition-colors flex items-center gap-3" href="#">
+<span class="material-symbols-outlined">psychology</span>
+<span class="font-label-md text-label-md">AI Insights</span>
+</a>
+<a class="text-secondary pl-4 py-3 hover:bg-surface-container transition-colors flex items-center gap-3" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="lg:ml-60 pt-24 pb-24 px-4 md:px-8 max-w-container-max mx-auto">
+<!-- Header Section with Action -->
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+<div>
+<h2 class="text-headline-lg font-headline-lg text-primary">明細取り込み</h2>
+<p class="text-body-md text-secondary">AIが領収書や請求書を自動でスキャンし、キャッシュフローを整理します。</p>
+</div>
+<button class="bg-primary text-white px-6 py-3 rounded-xl flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all shadow-md">
+<span class="material-symbols-outlined">auto_awesome</span>
+<span class="font-label-md text-label-md">AI Cashflow スキャン開始</span>
+</button>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+<!-- Upload Zone (Main Bento Card) -->
+<div class="lg:col-span-8 bg-surface-white p-8 rounded-xl border border-border-subtle shadow-sm bento-card">
+<div class="flex flex-col items-center justify-center border-2 border-dashed border-outline-variant rounded-xl p-12 bg-surface-container-low/30 hover:bg-surface-container-low transition-colors group cursor-pointer">
+<span class="material-symbols-outlined text-6xl text-outline-variant group-hover:text-primary transition-colors mb-4">upload_file</span>
+<h3 class="text-headline-md font-headline-md text-primary mb-2">ファイルをドラッグ＆ドロップ</h3>
+<p class="text-body-sm text-secondary mb-6 text-center">PDF, JPG, PNG または CSV 形式（最大 20MB）</p>
+<div class="flex flex-wrap justify-center gap-3">
+<button class="bg-surface-white border border-primary text-primary px-5 py-2 rounded-lg font-label-md text-label-md hover:bg-primary hover:text-white transition-all flex items-center gap-2">
+<span class="material-symbols-outlined">attachment</span>
+                            ファイルを選択
+                        </button>
+<button class="bg-surface-white border border-primary text-primary px-5 py-2 rounded-lg font-label-md text-label-md hover:bg-primary hover:text-white transition-all flex items-center gap-2">
+<span class="material-symbols-outlined">photo_camera</span>
+                            カメラで撮影
+                        </button>
+</div>
+</div>
+</div>
+<!-- AI Tips / Guidance Card -->
+<div class="lg:col-span-4 bg-primary text-white p-8 rounded-xl shadow-lg relative overflow-hidden bento-card">
+<div class="relative z-10">
+<div class="w-10 h-10 bg-primary-container rounded-lg flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-secondary-fixed">tips_and_updates</span>
+</div>
+<h3 class="text-headline-md font-headline-md mb-4">スマホ撮影のコツ</h3>
+<ul class="space-y-4">
+<li class="flex gap-3">
+<span class="material-symbols-outlined text-status-safe">check_circle</span>
+<p class="text-body-sm opacity-90">明るい場所で、領収書の四隅が枠内に入るように撮影してください。</p>
+</li>
+<li class="flex gap-3">
+<span class="material-symbols-outlined text-status-safe">check_circle</span>
+<p class="text-body-sm opacity-90">シワを伸ばし、平らな場所に置いて真上から撮ると認識率が向上します。</p>
+</li>
+<li class="flex gap-3">
+<span class="material-symbols-outlined text-status-safe">check_circle</span>
+<p class="text-body-sm opacity-90">背景に濃い色（机など）を選ぶと、AIが境界を検出しやすくなります。</p>
+</li>
+</ul>
+</div>
+<!-- Decorative background icon -->
+<span class="material-symbols-outlined absolute -bottom-8 -right-8 text-[160px] opacity-10 rotate-12">smartphone</span>
+</div>
+<!-- Transaction Review Table -->
+<div class="lg:col-span-12 bg-surface-white rounded-xl border border-border-subtle shadow-sm overflow-hidden">
+<div class="px-6 py-4 border-b border-border-subtle flex justify-between items-center bg-surface-container-lowest">
+<h3 class="text-body-lg font-bold text-primary flex items-center gap-2">
+<span class="material-symbols-outlined">pending_actions</span>
+                        承認待ちの明細
+                    </h3>
+<span class="text-label-md font-label-md px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full">3 件保留中</span>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead>
+<tr class="bg-surface-container-low text-secondary text-label-md">
+<th class="px-6 py-4 font-semibold uppercase tracking-wider">日付</th>
+<th class="px-6 py-4 font-semibold uppercase tracking-wider">項目 / 取引先</th>
+<th class="px-6 py-4 font-semibold uppercase tracking-wider">カテゴリー (AI推定)</th>
+<th class="px-6 py-4 font-semibold uppercase tracking-wider text-right">金額</th>
+<th class="px-6 py-4 font-semibold uppercase tracking-wider">ステータス</th>
+<th class="px-6 py-4 font-semibold uppercase tracking-wider">操作</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-border-subtle">
+<tr class="hover:bg-surface-container-low/50 transition-colors">
+<td class="px-6 py-4 font-numeric-data text-body-md">2023/10/24</td>
+<td class="px-6 py-4">
+<p class="font-bold text-primary text-body-md">スターバックス コーヒー</p>
+<p class="text-body-sm text-secondary">領収書：IMG_9842.jpg</p>
+</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center gap-1 px-3 py-1 bg-tertiary-fixed text-on-tertiary-fixed rounded-full text-label-md">
+<span class="material-symbols-outlined text-sm">local_cafe</span>
+                                        会議費
+                                    </span>
+</td>
+<td class="px-6 py-4 text-right font-numeric-data text-body-lg font-bold">¥650</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center gap-1 text-status-caution text-label-md font-bold">
+<span class="material-symbols-outlined text-sm">auto_awesome</span>
+                                        AI確認済
+                                    </span>
+</td>
+<td class="px-6 py-4">
+<div class="flex gap-2">
+<button class="p-2 hover:bg-secondary-container rounded-lg text-primary transition-colors">
+<span class="material-symbols-outlined">done</span>
+</button>
+<button class="p-2 hover:bg-error-container rounded-lg text-error transition-colors">
+<span class="material-symbols-outlined">edit</span>
+</button>
+</div>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-low/50 transition-colors">
+<td class="px-6 py-4 font-numeric-data text-body-md">2023/10/23</td>
+<td class="px-6 py-4">
+<p class="font-bold text-primary text-body-md">Amazon Web Services</p>
+<p class="text-body-sm text-secondary">請求書：INV-99321</p>
+</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center gap-1 px-3 py-1 bg-secondary-fixed text-on-secondary-fixed rounded-full text-label-md">
+<span class="material-symbols-outlined text-sm">cloud</span>
+                                        通信費
+                                    </span>
+</td>
+<td class="px-6 py-4 text-right font-numeric-data text-body-lg font-bold">¥12,480</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center gap-1 text-status-safe text-label-md font-bold">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                                        マッチ済
+                                    </span>
+</td>
+<td class="px-6 py-4">
+<div class="flex gap-2">
+<button class="p-2 hover:bg-secondary-container rounded-lg text-primary transition-colors">
+<span class="material-symbols-outlined">done</span>
+</button>
+<button class="p-2 hover:bg-error-container rounded-lg text-error transition-colors">
+<span class="material-symbols-outlined">edit</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile) -->
+<nav class="lg:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-safe h-20 bg-surface-white/80 backdrop-blur-md border-t border-border-subtle shadow-lg">
+<button class="flex flex-col items-center justify-center text-secondary">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-md text-label-md">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-primary bg-secondary-container/50 rounded-full px-4 py-1 scale-90">
+<span class="material-symbols-outlined">account_balance</span>
+<span class="font-label-md text-label-md">Flow</span>
+</button>
+<button class="flex flex-col items-center justify-center text-secondary">
+<span class="material-symbols-outlined">auto_awesome</span>
+<span class="font-label-md text-label-md">AI</span>
+</button>
+<button class="flex flex-col items-center justify-center text-secondary">
+<span class="material-symbols-outlined">more_horiz</span>
+<span class="font-label-md text-label-md">More</span>
+</button>
+</nav>
+<script>
+        // Simple interaction for buttons
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('mousedown', () => btn.classList.add('scale-95'));
+            btn.addEventListener('mouseup', () => btn.classList.remove('scale-95'));
+            btn.addEventListener('mouseleave', () => btn.classList.remove('scale-95'));
+        });
+    </script>
+</body></html>

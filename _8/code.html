@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html class="light" lang="ja">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Subscriptions — AI Cashflow Commander</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="../ai_cashflow_commander/responsive.css" rel="stylesheet"/>
+<style>
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; vertical-align: middle; }
+</style>
+<script id="tailwind-config">
+tailwind.config = {
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        "surface": "#f8f9fb", "surface-white": "#FFFFFF", "status-caution": "#F59E0B",
+        "border-subtle": "#E5E7EB", "status-safe": "#10B981", "primary": "#091426",
+        "on-primary": "#ffffff", "secondary": "#505f76", "on-primary-container": "#8590a6",
+        "surface-container-low": "#f3f4f6", "surface-container-high": "#e7e8ea",
+        "primary-container": "#1e293b", "status-danger": "#EF4444", "on-surface": "#191c1e",
+        "outline": "#75777d", "error": "#ba1a1a", "on-error": "#ffffff",
+        "surface-container-lowest": "#ffffff", "surface-container": "#edeef0"
+      },
+      spacing: { sm: "8px", md: "16px", lg: "24px", gutter: "24px", xl: "40px" },
+      fontFamily: { "body-md": ["Inter"], "headline-lg": ["Inter"], "headline-md": ["Inter"], "label-md": ["Inter"], "numeric-data": ["Inter"] }
+    }
+  }
+};
+</script>
+</head>
+<body class="bg-surface text-on-surface font-body-md">
+<div class="acc-app">
+  <div class="hidden fixed inset-0 bg-black/40 z-40 md:hidden" id="acc-sidebar-backdrop"></div>
+  <aside class="acc-sidebar" id="acc-sidebar">
+    <div class="mb-xl">
+      <span class="font-headline-md text-headline-md font-bold text-primary">AI Cashflow</span>
+      <p class="acc-brand-sub text-on-primary-container font-label-md text-label-md">Commander</p>
+    </div>
+    <nav class="flex-1 space-y-xs">
+      <a class="acc-nav-label flex items-center gap-sm px-md py-sm rounded-lg text-secondary hover:bg-surface-container-low transition-colors" href="../_7/code.html">
+        <span class="material-symbols-outlined">dashboard</span><span class="font-body-md">Dashboard</span>
+      </a>
+      <a class="acc-nav-label flex items-center gap-sm px-md py-sm rounded-lg text-secondary hover:bg-surface-container-low transition-colors" href="../_9/code.html">
+        <span class="material-symbols-outlined">payments</span><span class="font-body-md">Cashflow</span>
+      </a>
+      <a class="acc-nav-label flex items-center gap-sm px-md py-sm rounded-lg text-primary font-bold border-r-4 border-primary bg-surface-container-low" href="code.html">
+        <span class="material-symbols-outlined">subscriptions</span><span class="font-body-md">Subscriptions</span>
+      </a>
+      <a class="acc-nav-label flex items-center gap-sm px-md py-sm rounded-lg text-secondary hover:bg-surface-container-low transition-colors" href="../ai_3/code.html">
+        <span class="material-symbols-outlined">psychology</span><span class="font-body-md">AI Insights</span>
+      </a>
+    </nav>
+  </aside>
+
+  <div class="acc-shell">
+    <header class="acc-topbar">
+      <div class="flex items-center gap-3 min-w-0">
+        <button class="acc-menu-btn p-2 rounded-lg hover:bg-surface-container" id="acc-menu-toggle" type="button" aria-label="メニュー">
+          <span class="material-symbols-outlined">menu</span>
+        </button>
+        <div class="acc-search-wide flex items-center gap-md bg-surface-container-low px-md py-xs rounded-full border border-border-subtle flex-1 max-w-md">
+          <span class="material-symbols-outlined text-outline">search</span>
+          <input class="bg-transparent border-none outline-none text-body-sm w-full focus:ring-0 min-w-0" placeholder="サブスクを検索..." type="text"/>
+        </div>
+      </div>
+      <div class="flex items-center gap-md shrink-0">
+        <span id="acc-api-status"></span>
+        <button class="p-xs text-secondary hover:text-primary"><span class="material-symbols-outlined">notifications</span></button>
+      </div>
+    </header>
+
+    <main class="acc-main">
+      <div class="acc-main-inner">
+        <div class="acc-page-header">
+          <div class="min-w-0">
+            <h1 class="font-headline-lg text-headline-lg text-primary acc-break-words">サブスク管理</h1>
+            <p class="text-secondary font-body-md acc-break-words">支出を最適化し、キャッシュフローの精度を高めます</p>
+          </div>
+          <div class="bg-surface-white px-md py-sm rounded-xl border border-border-subtle shadow-sm flex items-center gap-sm shrink-0">
+            <span class="text-secondary font-label-md">Monthly Total</span>
+            <span class="font-numeric-data text-primary">¥14,020</span>
+          </div>
+        </div>
+
+        <div id="acc-opt-panel"></div>
+
+        <section class="mb-lg relative overflow-hidden bg-primary-container text-on-primary rounded-xl p-lg border-l-4 border-status-caution shadow-lg">
+          <div class="flex flex-col sm:flex-row items-start gap-md relative z-10">
+            <div class="bg-status-caution/20 p-sm rounded-full shrink-0">
+              <span class="material-symbols-outlined text-status-caution">tips_and_updates</span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <h2 class="font-headline-md text-headline-md mb-xs">AI監査アラート</h2>
+              <p class="text-on-primary-container text-body-md acc-break-words" id="acc-audit-text">読み込み中…</p>
+            </div>
+            <button class="w-full sm:w-auto bg-white/10 hover:bg-white/20 text-white px-lg py-md rounded-xl border border-white/20 shrink-0">監査レポートを見る</button>
+          </div>
+        </section>
+
+        <div class="bg-surface-white rounded-xl border border-border-subtle shadow-sm">
+          <div class="acc-table-wrap">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-surface-container-low border-b border-border-subtle">
+                  <th class="px-lg py-md font-label-md text-secondary uppercase">Service</th>
+                  <th class="px-lg py-md font-label-md text-secondary uppercase">Monthly Cost</th>
+                  <th class="px-lg py-md font-label-md text-secondary uppercase">Category</th>
+                  <th class="px-lg py-md font-label-md text-secondary uppercase">Usage</th>
+                  <th class="px-lg py-md font-label-md text-secondary uppercase">AI Recommendation</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-border-subtle">
+                <tr class="hover:bg-surface-container-lowest">
+                  <td class="px-lg py-md"><div class="flex items-center gap-md min-w-0"><div class="h-10 w-10 bg-error/10 rounded flex items-center justify-center font-bold text-error shrink-0">Ps</div><span class="font-bold text-primary acc-break-words">Adobe Creative Cloud</span></div></td>
+                  <td class="px-lg py-md font-numeric-data whitespace-nowrap">¥6,480</td>
+                  <td class="px-lg py-md"><span class="bg-surface-container-high text-secondary px-sm py-xs rounded text-label-md">Design</span></td>
+                  <td class="px-lg py-md"><span class="text-status-safe font-bold text-xs">High 92%</span></td>
+                  <td class="px-lg py-md"><span class="text-status-safe bg-status-safe/10 px-sm py-xs rounded-full text-label-md font-bold">維持推奨</span></td>
+                </tr>
+                <tr class="hover:bg-surface-container-lowest">
+                  <td class="px-lg py-md acc-break-words" colspan="5"><p class="text-xs text-secondary pl-14">FleetMetric Pro / AI開発 / 動画制作に使用 · 利用率高 · 代替コスト高</p></td>
+                </tr>
+                <tr class="hover:bg-surface-container-lowest">
+                  <td class="px-lg py-md"><div class="flex items-center gap-md min-w-0"><div class="h-10 w-10 bg-primary/10 rounded flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-primary">videocam</span></div><span class="font-bold text-primary acc-break-words">Zoom Pro Plan</span></div></td>
+                  <td class="px-lg py-md font-numeric-data whitespace-nowrap">¥2,100</td>
+                  <td class="px-lg py-md"><span class="bg-surface-container-high text-secondary px-sm py-xs rounded text-label-md">Comm.</span></td>
+                  <td class="px-lg py-md"><span class="text-status-caution font-bold text-xs">Medium 45%</span></td>
+                  <td class="px-lg py-md acc-break-words"><span class="text-status-caution text-label-md font-bold">Alternative available</span></td>
+                </tr>
+                <tr class="hover:bg-surface-container-lowest">
+                  <td class="px-lg py-md"><div class="flex items-center gap-md min-w-0"><div class="h-10 w-10 bg-status-safe/10 rounded flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-status-safe">auto_awesome</span></div><span class="font-bold text-primary acc-break-words">ChatGPT Plus</span></div></td>
+                  <td class="px-lg py-md font-numeric-data whitespace-nowrap">¥3,000</td>
+                  <td class="px-lg py-md"><span class="bg-surface-container-high text-secondary px-sm py-xs rounded text-label-md">AI</span></td>
+                  <td class="px-lg py-md"><span class="text-status-safe font-bold text-xs">High 100%</span></td>
+                  <td class="px-lg py-md"><span class="text-status-safe bg-status-safe/10 px-sm py-xs rounded-full text-label-md font-bold">Core</span></td>
+                </tr>
+                <tr class="hover:bg-surface-container-lowest">
+                  <td class="px-lg py-md"><div class="flex items-center gap-md min-w-0"><div class="h-10 w-10 bg-secondary/10 rounded flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-secondary">cloud</span></div><span class="font-bold text-primary acc-break-words">Dropbox Professional</span></div></td>
+                  <td class="px-lg py-md font-numeric-data whitespace-nowrap">¥2,400</td>
+                  <td class="px-lg py-md"><span class="bg-surface-container-high text-secondary px-sm py-xs rounded text-label-md">Storage</span></td>
+                  <td class="px-lg py-md"><span class="text-status-danger font-bold text-xs">Zero 90d</span></td>
+                  <td class="px-lg py-md"><span class="text-on-error bg-status-danger px-sm py-xs rounded-full text-label-md font-bold">解約推奨</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <footer class="acc-footer-bar mt-lg">
+          <div class="acc-footer-bar-inner">
+            <div class="acc-footer-cta">
+              <div class="flex flex-col sm:items-end sm:border-r sm:border-white/10 sm:pr-lg">
+                <span class="text-on-primary-container font-label-md uppercase text-xs">Potential Total Savings</span>
+                <span class="font-numeric-data text-headline-md text-white" id="acc-footer-savings">—</span>
+              </div>
+              <button class="bg-white text-primary px-xl py-md rounded-xl font-bold flex items-center justify-center gap-sm hover:bg-surface-container active:scale-95">
+                <span class="material-symbols-outlined">cleaning_services</span>
+                <span class="acc-break-words">一括クリーンアップを実行</span>
+              </button>
+            </div>
+          </div>
+        </footer>
+      </div>
+    </main>
+  </div>
+
+  <nav class="acc-mobile-nav">
+    <a href="../_7/code.html"><span class="material-symbols-outlined">dashboard</span>Home</a>
+    <a href="../_9/code.html"><span class="material-symbols-outlined">payments</span>Cash</a>
+    <a class="active" href="code.html"><span class="material-symbols-outlined">subscriptions</span>Subs</a>
+    <a href="../ai_3/code.html"><span class="material-symbols-outlined">psychology</span>AI</a>
+  </nav>
+</div>
+
+<script src="../ai_cashflow_commander/api-client.js"></script>
+<script>
+(async function bootSubscriptionsDesktop() {
+  AccApi.initResponsiveShell();
+  const result = await AccApi.fetchDashboard();
+  const data = result.data;
+  const opt = data.brief.subscriptionOptimization;
+
+  document.getElementById("acc-api-status").innerHTML = AccApi.renderApiStatus(result);
+  document.getElementById("acc-opt-panel").innerHTML = AccApi.renderOptimizationPanel(data);
+  document.getElementById("acc-footer-savings").textContent = AccApi.formatYen(opt.yearlySavingPotential) + " /yr";
+
+  const top = opt.candidates[0];
+  document.getElementById("acc-audit-text").innerHTML = top
+    ? `<strong class="text-white">${opt.candidates.length}件</strong>の解約候補を検出。` +
+      `<strong class="text-white">${top.name}</strong>を解約すると年間 <strong class="text-white">${AccApi.formatYen(top.yearlySaving)}</strong> 削減。理由: ${top.reason}`
+    : "解約候補はありません。";
+})();
+</script>
+</body>
+</html>

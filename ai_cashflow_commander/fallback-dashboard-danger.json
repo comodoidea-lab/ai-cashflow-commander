@@ -1,0 +1,38 @@
+{
+  "metrics": {
+    "status": "DANGER",
+    "score": 48,
+    "gapToSafety": 72000,
+    "runwayDays": 12,
+    "safeUntilDate": "2026-06-27",
+    "projectedBalanceAfterPayments": 180000,
+    "monthlyBurnRate": 380000
+  },
+  "brief": {
+    "status": "DANGER",
+    "score": 48,
+    "gapToSafety": 72000,
+    "gapWorkDays": 8,
+    "runwayDays": 12,
+    "safeUntilDate": "2026-06-27",
+    "gapMessage": "あと ¥72,000 で安全圏です",
+    "workDaysMessage": "FleetMetric Pro であと8日稼働、または支出削減が必要",
+    "primaryAction": {
+      "priority": 1,
+      "id": "urgent-gap",
+      "title": "25日のカード引落前に ¥72,000 を確保",
+      "impactYen": 72000,
+      "category": "income",
+      "templateReason": "ビジネスカード引落 ¥125,000 の前に追加収入または支出削減が必要"
+    },
+    "nextBigPayment": { "name": "ビジネスカード引落", "daysUntil": 10, "amount": 125000 }
+  },
+  "fleetMetric": {
+    "lastSync": "2026-06-12T08:00:00",
+    "syncCount": 8,
+    "status": "stale",
+    "syncMethod": "CSV",
+    "monthlyRevenueSynced": 980000,
+    "recommendedWorkDays": 8
+  }
+}

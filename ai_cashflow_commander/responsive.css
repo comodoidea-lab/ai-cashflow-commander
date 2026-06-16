@@ -1,0 +1,271 @@
+/* AI Cashflow Commander — responsive shell (1280 / 768 / 375) */
+
+.acc-app {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  max-width: 100%;
+  background: #f3f4f6;
+}
+
+.acc-sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: #fff;
+  border-right: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 16px;
+  z-index: 50;
+}
+
+.acc-shell {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.acc-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 24px;
+  background: rgba(248, 249, 251, 0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.acc-main {
+  flex: 1;
+  min-width: 0;
+  padding: 24px;
+  padding-bottom: 120px;
+}
+
+.acc-main-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.acc-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
+}
+
+.acc-table-wrap table {
+  min-width: 640px;
+}
+
+.acc-footer-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 30;
+  padding: 16px 24px;
+  background: linear-gradient(to top, rgba(243, 244, 246, 0.98), transparent);
+}
+
+.acc-footer-bar-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.acc-footer-cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  background: #091426;
+  color: #fff;
+  border-radius: 16px;
+  padding: 16px 20px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.acc-mobile-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 60;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid #e5e7eb;
+  padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+  justify-content: space-around;
+}
+
+.acc-mobile-nav a,
+.acc-mobile-nav button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 10px;
+  color: #505f76;
+  min-width: 56px;
+}
+
+.acc-mobile-nav a.active {
+  color: #091426;
+  background: #d0e1fb55;
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+.acc-menu-btn {
+  display: none;
+}
+
+.acc-page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.acc-break-words {
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+/* Tablet: 768–1279 */
+@media (min-width: 768px) and (max-width: 1279px) {
+  .acc-sidebar {
+    width: 72px;
+    padding: 16px 8px;
+    align-items: center;
+  }
+
+  .acc-sidebar .acc-brand-sub,
+  .acc-sidebar .acc-nav-label,
+  .acc-sidebar .acc-sidebar-status-text,
+  .acc-sidebar .acc-add-btn-label {
+    display: none;
+  }
+
+  .acc-sidebar nav a {
+    justify-content: center;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .acc-topbar {
+    padding: 12px 16px;
+  }
+
+  .acc-main {
+    padding: 16px;
+    padding-bottom: 100px;
+  }
+}
+
+/* Mobile: ≤767 */
+@media (max-width: 767px) {
+  .acc-app {
+    flex-direction: column;
+  }
+
+  .acc-sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    width: min(280px, 86vw);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
+  }
+
+  .acc-sidebar.is-open {
+    transform: translateX(0);
+  }
+
+  .acc-shell {
+    width: 100%;
+  }
+
+  .acc-topbar {
+    padding: 10px 12px;
+  }
+
+  .acc-topbar .acc-search-wide {
+    display: none;
+  }
+
+  .acc-menu-btn {
+    display: inline-flex;
+  }
+
+  .acc-main {
+    padding: 12px;
+    padding-bottom: 88px;
+  }
+
+  .acc-footer-bar {
+    padding: 12px;
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+  }
+
+  .acc-footer-cta {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .acc-footer-cta button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .acc-mobile-nav {
+    display: flex;
+  }
+
+  .acc-page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  [data-acc="safety-hero"] {
+    padding: 12px !important;
+    margin-bottom: 8px !important;
+  }
+
+  [data-acc="safety-hero"] .text-3xl {
+    font-size: 1.75rem;
+  }
+
+  [data-acc="commander-brief"] {
+    padding: 12px !important;
+    margin-bottom: 8px !important;
+  }
+
+  [data-acc="fleetmetric-sync-compact"] {
+    padding: 10px !important;
+    margin-bottom: 8px !important;
+  }
+
+  [data-acc="gap-priority"] {
+    padding: 12px !important;
+  }
+
+  [data-acc="gap-priority"] .text-3xl {
+    font-size: 1.5rem;
+  }
+
+  .acc-main {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+  }
+}
