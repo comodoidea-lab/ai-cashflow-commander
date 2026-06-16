@@ -1,4 +1,6 @@
 {
+  "asOfMonth": "2026-06",
+  "safetyBufferTarget": 1109220,
   "metrics": {
     "status": "SAFE",
     "score": 100,
@@ -22,6 +24,7 @@
       "id": "cancel-sub-dropbox",
       "title": "Dropbox Professional を解約（年間 ¥23,760 削減）",
       "impactYen": 23760,
+      "impactPeriod": "yearly",
       "category": "subscription",
       "templateReason": "過去90日間の利用実績がありません（最終利用: 120日前）"
     },
@@ -31,6 +34,7 @@
         "id": "cancel-sub-dropbox",
         "title": "Dropbox Professional を解約（年間 ¥23,760 削減）",
         "impactYen": 23760,
+        "impactPeriod": "yearly",
         "category": "subscription",
         "templateReason": "過去90日間の利用実績がありません（最終利用: 120日前）"
       },
@@ -38,7 +42,8 @@
         "priority": 2,
         "id": "subscription-cleanup",
         "title": "サブスク整理（月 ¥12,860 改善）",
-        "impactYen": 154320,
+        "impactYen": 12860,
+        "impactPeriod": "monthly",
         "category": "subscription",
         "templateReason": "3 件の解約候補を検出"
       },
@@ -47,6 +52,7 @@
         "id": "tax-reserve",
         "title": "税金積立 ¥125,000 を開始",
         "impactYen": 125000,
+        "impactPeriod": "monthly",
         "category": "tax",
         "templateReason": "今月収入の10%を納税準備口座へ"
       }
@@ -92,8 +98,11 @@
   },
   "kpis": {
     "projectedIncome": 1250000,
+    "projectedIncomePeriod": "monthly",
     "confirmedExpenses": 420000,
-    "projectedBalance": 1429220
+    "confirmedExpensesPeriod": "monthly",
+    "projectedBalance": 1429220,
+    "projectedBalancePeriod": "balance"
   },
   "fleetMetric": {
     "lastSync": "2026-06-15T22:34:00",
@@ -105,9 +114,13 @@
   },
   "surplus": {
     "amount": 320000,
+    "amountPeriod": "balance",
     "investmentCandidate": 150000,
+    "investmentCandidatePeriod": "monthly",
     "taxReserveSuggested": 125000,
-    "aiDevBudgetSuggested": 50000
+    "taxReserveSuggestedPeriod": "monthly",
+    "aiDevBudgetSuggested": 50000,
+    "aiDevBudgetSuggestedPeriod": "monthly"
   },
   "simulations": [
     {

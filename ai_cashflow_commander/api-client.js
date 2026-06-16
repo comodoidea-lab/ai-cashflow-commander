@@ -41,6 +41,341 @@
     return "¥" + Math.round(n).toLocaleString("ja-JP");
   }
 
+  const PERIOD_SUFFIX = { monthly: "/月", yearly: "/年", balance: "" };
+  const PERIOD_LABEL = { monthly: "今月", yearly: "年間", balance: "月末見込" };
+
+  function formatMoneyWithPeriod(amount, period) {
+    const p = period || "monthly";
+    if (p === "balance") {
+      return `${formatYen(amount)} <span class="text-xs font-normal text-secondary ml-1">月末見込</span>`;
+    }
+    return `${formatYen(amount)}${PERIOD_SUFFIX[p] || ""}`;
+  }
+
+  function formatAsOfMonth(data) {
+    const m = data.asOfMonth || (data.brief?.safeUntilDate || "2026-06-15").slice(0, 7);
+    const [y, mo] = m.split("-");
+    return `${y}年${Number(mo)}月の見込み`;
+  }
+
+  function getSurplusFlowContext(data) {
+    const k = data.kpis || {};
+    const s = data.surplus || {};
+    const m = data.metrics || {};
+    const projectedIncome = k.projectedIncome || 0;
+    const confirmedExpenses = k.confirmedExpenses || 0;
+    const projectedBalance = k.projectedBalance || m.projectedBalanceAfterPayments || 0;
+    const surplus = s.amount || 0;
+    const safetyBufferTarget =
+      data.safetyBufferTarget != null ? data.safetyBufferTarget : Math.max(0, projectedBalance - surplus);
+    const monthlyNet = projectedIncome - confirmedExpenses;
+    const taxReserveSuggested = s.taxReserveSuggested || 0;
+    const taxPct = projectedIncome > 0 ? Math.round((taxReserveSuggested / projectedIncome) * 100) : 0;
+
+    return {
+      projectedIncome,
+      confirmedExpenses,
+      projectedBalance,
+      surplus,
+      safetyBufferTarget,
+      monthlyNet,
+      taxPct,
+      taxReserveSuggested,
+      investmentCandidate: s.investmentCandidate || 0,
+      aiDevBudgetSuggested: s.aiDevBudgetSuggested || 0,
+      allocTotal: (s.investmentCandidate || 0) + taxReserveSuggested + (s.aiDevBudgetSuggested || 0),
+      isSafe: m.status === "SAFE" && surplus > 0,
+      asOfLabel: formatAsOfMonth(data),
+    };
+  }
+
+  function getBalanceStatusContext(data) {
+    const flow = getSurplusFlowContext(data);
+    const reserveGap = flow.projectedBalance - flow.safetyBufferTarget;
+    const incomeExpenseDelta = flow.projectedIncome - flow.confirmedExpenses;
+    const openingBalance = flow.projectedBalance - incomeExpenseDelta;
+
+    let status = "安定";
+    let tone = STATUS_STYLE.SAFE;
+    let icon = "check_circle";
+    let summary = "収入が支出を上回り、月末残高も安全ラインを上回る見込みです。";
+    let helper = "まずはこの収支と残高の関係だけ確認すれば十分です。";
+
+    if (reserveGap < 0 || flow.projectedBalance < 0) {
+      status = "不足";
+      tone = STATUS_STYLE.DANGER;
+      icon = "error";
+      summary = "月末残高が安全ラインを下回る見込みです。";
+      helper = "追加収入または支出調整が必要です。";
+    } else if (incomeExpenseDelta < 0) {
+      status = "注意";
+      tone = STATUS_STYLE.CAUTION;
+      icon = "warning";
+      summary = "月末残高は残りますが、今月の支出が収入を上回る見込みです。";
+      helper = "まずは支出超過が一時的なものかを確認してください。";
+    }
+
+    return {
+      ...flow,
+      openingBalance,
+      incomeExpenseDelta,
+      reserveGap,
+      status,
+      tone,
+      icon,
+      summary,
+      helper,
+    };
+  }
+
+  function renderBalanceBridge(data) {
+    const flow = getBalanceStatusContext(data);
+    const availableSurplus = Math.max(0, flow.reserveGap);
+    const defaultCashReserve = Math.max(
+      availableSurplus - (flow.taxReserveSuggested || 0) - (flow.aiDevBudgetSuggested || 0),
+      0,
+    );
+    const maxValue = Math.max(
+      Math.abs(flow.openingBalance),
+      Math.abs(flow.projectedIncome),
+      Math.abs(flow.confirmedExpenses),
+      Math.abs(flow.projectedBalance),
+      Math.abs(flow.safetyBufferTarget),
+      1,
+    );
+    const widthFor = (value) => Math.max(12, Math.round((Math.abs(value) / maxValue) * 100));
+    const reserveTone = flow.reserveGap >= 0 ? "text-status-safe" : "text-status-danger";
+    const defaultAdjustedBalance = flow.safetyBufferTarget + defaultCashReserve;
+    const defaultAdjustedExpenses = flow.confirmedExpenses + (availableSurplus - defaultCashReserve);
+    const rows = [
+      {
+        id: "opening",
+        label: "月初残高",
+        value: flow.openingBalance,
+        bar: "bg-secondary",
+        note: "今月の出発点",
+      },
+      {
+        id: "income",
+        label: "予測収入",
+        value: flow.projectedIncome,
+        bar: "bg-status-safe",
+        note: "FleetMetric Pro同期",
+      },
+      {
+        id: "expense",
+        label: "確定支出",
+        value: -defaultAdjustedExpenses,
+        bar: "bg-status-caution",
+        note: "選択中の配分を反映",
+      },
+      {
+        id: "balance",
+        label: "月末残高",
+        value: defaultAdjustedBalance,
+        bar: flow.reserveGap >= 0 ? "bg-status-safe" : "bg-status-danger",
+        note: "選択後の見込み",
+      },
+    ];
+
+    return `
+      <section class="bg-surface-white rounded-xl card-shadow border border-border-subtle p-lg mt-md scroll-mt-20 md:scroll-mt-4" data-acc="balance-bridge">
+        <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-md mb-lg">
+          <div>
+            <p class="text-label-md text-secondary uppercase mb-1">残高内訳</p>
+            <h3 class="font-headline-md text-headline-md text-primary font-bold">残高がどう動くか</h3>
+            <p class="text-sm text-secondary mt-1 acc-break-words">月初残高に今月の収入と支出を反映して、月末残高と安全ラインとの差を確認します。</p>
+          </div>
+          <div class="bg-surface-container-low rounded-xl px-md py-sm border border-border-subtle shrink-0">
+            <p class="text-[10px] text-secondary uppercase">安全ラインとの差</p>
+            <p class="text-xl font-bold ${reserveTone}" data-balance-reserve-gap>${formatYen(defaultCashReserve)}</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-lg items-stretch" data-balance-bridge-model data-opening="${flow.openingBalance}" data-income="${flow.projectedIncome}" data-expense="${flow.confirmedExpenses}" data-projected="${flow.projectedBalance}" data-safety="${flow.safetyBufferTarget}" data-surplus="${availableSurplus}">
+          <div class="h-full flex flex-col gap-md">
+            ${rows
+              .map(
+                (row) => `
+              <div class="grid grid-cols-[1fr_auto] md:grid-cols-[112px_1fr_128px] gap-x-md gap-y-xs md:items-center" data-balance-row="${row.id}">
+                <div>
+                  <p class="text-sm font-bold text-primary">${row.label}</p>
+                  <p class="text-[10px] text-secondary" data-balance-note>${row.note}</p>
+                </div>
+                <p class="text-right font-bold md:col-start-3 md:row-start-1 ${row.value < 0 ? "text-status-caution" : "text-primary"}" data-balance-value>${row.value < 0 ? "-" : ""}${formatYen(Math.abs(row.value))}</p>
+                <div class="col-span-2 md:col-span-1 md:col-start-2 md:row-start-1 h-8 rounded-lg bg-surface-container-low overflow-hidden border border-border-subtle">
+                  <div class="h-full ${row.bar} transition-all duration-500 ease-out" data-balance-bar style="width:${widthFor(row.value)}%"></div>
+                </div>
+              </div>`,
+              )
+              .join("")}
+            ${availableSurplus > 0 ? `
+              <div class="grid grid-cols-[1fr_auto] md:grid-cols-[112px_1fr_128px] gap-x-md gap-y-xs md:items-center rounded-xl bg-status-safe/5 outline outline-1 outline-status-safe/20 px-0 py-sm transition-colors duration-300" data-allocation-effect data-surplus-total="${availableSurplus}">
+                <div>
+                  <p class="text-sm font-bold text-primary" data-allocation-effect-label>手元余力として残す</p>
+                  <p class="text-[10px] text-secondary" data-allocation-effect-note>選択した現金枠</p>
+                </div>
+                <p class="text-right font-bold md:col-start-3 md:row-start-1 text-status-safe" data-allocation-effect-value>+${formatYen(defaultCashReserve)}</p>
+                <div class="col-span-2 md:col-span-1 md:col-start-2 md:row-start-1 h-8 rounded-lg bg-surface-container-low overflow-hidden border border-border-subtle">
+                  <div class="h-full bg-status-safe transition-all duration-500 ease-out" data-allocation-effect-bar style="width:${Math.max(12, Math.round((defaultCashReserve / availableSurplus) * 100))}%"></div>
+                </div>
+              </div>` : ""}
+          </div>
+          <div class="rounded-xl bg-surface-container-low border border-border-subtle p-md h-full flex flex-col justify-center">
+            <p class="text-sm font-bold text-primary mb-md">判定の式</p>
+            <div class="space-y-sm text-sm">
+              <div class="flex justify-between gap-md"><span class="text-secondary">月初残高</span><span class="font-bold text-primary">${formatYen(flow.openingBalance)}</span></div>
+              <div class="flex justify-between gap-md"><span class="text-secondary">+ 収入</span><span class="font-bold text-status-safe">${formatYen(flow.projectedIncome)}</span></div>
+              <div class="flex justify-between gap-md"><span class="text-secondary">− 支出</span><span class="font-bold text-status-caution" data-formula-expense>${formatYen(defaultAdjustedExpenses)}</span></div>
+              <div class="border-t border-border-subtle pt-sm flex justify-between gap-md"><span class="text-secondary">= 月末残高</span><span class="font-bold text-primary" data-formula-balance>${formatYen(defaultAdjustedBalance)}</span></div>
+              <div class="flex justify-between gap-md"><span class="text-secondary">安全ライン</span><span class="font-bold text-primary">${formatYen(flow.safetyBufferTarget)}</span></div>
+              <div class="flex justify-between gap-md"><span class="text-secondary">差額</span><span class="font-bold text-status-safe" data-formula-gap>${formatYen(defaultCashReserve)}</span></div>
+            </div>
+          </div>
+        </div>
+      </section>`;
+  }
+
+  function renderSurplusBrief(data) {
+    const flow = getBalanceStatusContext(data);
+    const availableSurplus = Math.max(0, flow.reserveGap);
+    if (availableSurplus <= 0) return "";
+
+    const taxReserve = Math.min(availableSurplus, flow.taxReserveSuggested || 0);
+    const aiBudget = Math.min(Math.max(availableSurplus - taxReserve, 0), flow.aiDevBudgetSuggested || 0);
+    const keepOnHand = Math.max(availableSurplus - taxReserve - aiBudget, 0);
+    const allocations = [
+      {
+        id: "tax",
+        kind: "expense",
+        label: "税金積立",
+        value: taxReserve,
+        detail: `今月収入の${flow.taxPct || 10}%を先に確保`,
+        color: "bg-secondary",
+        note: "この金額を税金用に確保したあとの手持ちです",
+      },
+      {
+        id: "ai",
+        kind: "expense",
+        label: "事業投資・AI予算",
+        value: aiBudget,
+        detail: "余剰内で小さく試す",
+        color: "bg-primary",
+        note: "この金額を事業投資に使ったあとの手持ちです",
+      },
+      {
+        id: "cash",
+        kind: "cash",
+        label: "手元余力として残す",
+        value: keepOnHand,
+        detail: "安全ライン超過分の残り",
+        color: "bg-status-safe",
+        note: "この金額を確保したうえで、残りを別用途に回せます",
+      },
+    ].filter((item) => item.value > 0);
+
+    const defaultAllocation = allocations.find((item) => item.id === "cash") || allocations[0];
+    const cashOnHandFor = (item) =>
+      item.kind === "cash" ? item.value : Math.max(availableSurplus - item.value, 0);
+    const formulaFor = (item) =>
+      item.kind === "cash"
+        ? `余剰金 ${formatYen(availableSurplus)} のうち ${item.label} +${formatYen(item.value)} = 今使える現金 ${formatYen(cashOnHandFor(item))}`
+        : `余剰金 ${formatYen(availableSurplus)} − ${item.label} ${formatYen(item.value)} = 今使える現金 ${formatYen(cashOnHandFor(item))}`;
+    const selectedTextFor = (item) =>
+      item.kind === "cash"
+        ? `${item.label} +${formatYen(item.value)} を選択中`
+        : `${item.label} ${formatYen(item.value)} を選択中`;
+    const defaultCashOnHand = cashOnHandFor(defaultAllocation);
+    const segmentStyle = (value) => `width:${Math.max(8, Math.round((value / availableSurplus) * 100))}%`;
+
+    return `
+      <section class="bg-surface-white rounded-xl card-shadow border border-border-subtle p-lg mt-md" data-acc="surplus-brief">
+        <div class="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-lg xl:items-start">
+          <div>
+            <p class="text-label-md text-secondary uppercase mb-1">Commander Brief</p>
+            <h3 class="font-headline-md text-headline-md text-primary font-bold">余剰金をどう使うか</h3>
+            <p class="text-sm text-secondary mt-1 max-w-3xl acc-break-words">安全ラインを上回った ${formatYen(availableSurplus)} を、まず税金、次に事業投資、残りは手元余力として扱います。</p>
+          </div>
+          <div class="rounded-xl bg-surface-container-low border border-border-subtle p-md">
+            <p class="text-[10px] text-secondary uppercase mb-1">配分対象</p>
+            <p class="text-2xl font-bold text-status-safe">${formatYen(availableSurplus)}</p>
+            <div class="flex h-3 rounded-full overflow-hidden bg-surface-white border border-border-subtle mt-md" aria-label="余剰金の配分">
+              ${allocations.map((item) => `<span class="${item.color}" style="${segmentStyle(item.value)}"></span>`).join("")}
+            </div>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-md mt-lg">
+          ${allocations
+            .map(
+              (item) => {
+                const selected = item.id === defaultAllocation.id;
+                const selectedClass = selected ? "border-primary bg-primary/5 ring-2 ring-primary/10" : "border-border-subtle bg-surface-container-low";
+                return `
+            <button type="button" class="acc-surplus-option text-left rounded-xl border ${selectedClass} p-md transition-all hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/30" aria-pressed="${selected ? "true" : "false"}" data-surplus-option data-kind="${item.kind}" data-label="${item.label}" data-value="${item.value}" data-note="${item.note}">
+              <div class="flex items-start justify-between gap-md">
+                <div>
+                  <p class="text-sm font-bold text-primary acc-break-words">${item.label}</p>
+                  <p class="text-[11px] text-secondary mt-1 acc-break-words">${item.detail}</p>
+                </div>
+                <span class="w-3 h-3 rounded-full ${item.color} shrink-0 mt-1"></span>
+              </div>
+              <p class="text-xl font-bold text-primary mt-md">${formatYen(item.value)}</p>
+            </button>`;
+              },
+            )
+            .join("")}
+        </div>
+        <div class="mt-md rounded-xl border border-primary/20 bg-status-safe/5 p-md" data-surplus-result data-surplus-total="${availableSurplus}">
+          <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-md">
+            <div>
+              <p class="text-label-md text-secondary uppercase mb-1">選択後の手持ち現金</p>
+              <p class="text-sm text-secondary acc-break-words">月末残高から安全ラインを確保したあとの余剰金ベース</p>
+              <p class="text-xs text-secondary mt-2 acc-break-words" data-surplus-note>${defaultAllocation.note}</p>
+            </div>
+            <div class="md:text-right">
+              <p class="text-3xl font-bold text-status-safe" data-surplus-cash>${formatYen(defaultCashOnHand)}</p>
+              <p class="text-xs text-secondary mt-1 acc-break-words" data-surplus-selected>${selectedTextFor(defaultAllocation)}</p>
+            </div>
+          </div>
+          <p class="mt-md pt-md border-t border-border-subtle text-sm text-secondary acc-break-words" data-surplus-formula>
+            ${formulaFor(defaultAllocation)}
+          </p>
+        </div>
+      </section>`;
+  }
+
+  function resolveActionImpactDisplay(action, data) {
+    const opt = data.brief?.subscriptionOptimization;
+    if (action.id === "subscription-cleanup" && opt) {
+      return {
+        amount: opt.monthlySavingPotential,
+        period: "monthly",
+        sub: `年間 ${formatYen(opt.yearlySavingPotential)} 相当`,
+      };
+    }
+    const period = action.impactPeriod || inferPeriodFromAction(action);
+    return { amount: action.impactYen, period, sub: null };
+  }
+
+  function inferPeriodFromAction(action) {
+    if (action.impactPeriod) return action.impactPeriod;
+    if (/年間/.test(action.title || "")) return "yearly";
+    if (/月/.test(action.title || "")) return "monthly";
+    if (action.category === "subscription") return "yearly";
+    return "monthly";
+  }
+
+  /** 収支→残高のつながり */
+  function renderSurplusFlowLine(data) {
+    const flow = getBalanceStatusContext(data);
+    return `
+      <p class="text-xs text-secondary mb-md acc-break-words" data-acc="surplus-flow-line">
+        <span class="font-semibold text-primary">${flow.asOfLabel}</span>
+        — 収入 ${formatMoneyWithPeriod(flow.projectedIncome, "monthly")} − 支出 ${formatMoneyWithPeriod(flow.confirmedExpenses, "monthly")}
+        = 収支 ${formatYen(flow.incomeExpenseDelta)}
+        → 月末残高 ${formatMoneyWithPeriod(flow.projectedBalance, "balance")}
+      </p>`;
+  }
+
   function formatDateJa(iso) {
     const d = new Date(iso + "T00:00:00");
     return d.toLocaleDateString("ja-JP", {
@@ -101,6 +436,8 @@
     return {
       ...FALLBACK_DASHBOARD,
       ...data,
+      asOfMonth: data.asOfMonth || FALLBACK_DASHBOARD.asOfMonth,
+      safetyBufferTarget: data.safetyBufferTarget ?? FALLBACK_DASHBOARD.safetyBufferTarget,
       metrics: { ...FALLBACK_DASHBOARD.metrics, ...data.metrics },
       brief: { ...FALLBACK_DASHBOARD.brief, ...data.brief },
       kpis: { ...FALLBACK_DASHBOARD.kpis, ...data.kpis },
@@ -130,55 +467,46 @@
 
   /** FinancialSafetyHero */
   function renderSafetyHero(data, compact) {
-    const m = data.metrics;
-    const b = data.brief;
-    const s = statusStyle(m.status);
-    const scorePct = m.score;
+    const flow = getBalanceStatusContext(data);
+    const s = flow.tone;
+    const balanceVsLine = flow.reserveGap >= 0 ? "上回る" : "下回る";
+    const balanceText = flow.reserveGap >= 0 ? `安全ラインを ${formatYen(flow.reserveGap)} 上回ります` : `安全ラインに ${formatYen(Math.abs(flow.reserveGap))} 足りません`;
 
     if (compact) {
       return `
         <section class="rounded-xl card-shadow border-2 ${s.border} ${s.bg} p-5 mb-4" data-acc="safety-hero">
-          <div class="flex items-start justify-between gap-4">
-            <div>
-              <span class="inline-flex items-center gap-1 ${s.text} font-bold text-sm uppercase tracking-wider">
-                <span class="material-symbols-outlined text-base">${s.icon}</span>${m.status}
-              </span>
-              <p class="text-3xl font-bold text-primary mt-1">${m.score}<span class="text-lg text-secondary font-semibold"> / 100</span></p>
-              <p class="text-xs text-secondary mt-1">Financial Safety Score</p>
-            </div>
-            <div class="text-right">
-              <p class="text-xs text-secondary uppercase tracking-wider">Runway</p>
-              <p class="text-2xl font-bold text-primary">${m.runwayDays}<span class="text-sm font-semibold">日</span></p>
-              <p class="text-[10px] text-secondary mt-1">${formatDateJa(m.safeUntilDate)}まで</p>
-            </div>
+          <div class="flex items-center gap-2 mb-3">
+            <span class="material-symbols-outlined ${s.text}">${flow.icon}</span>
+            <span class="${s.text} font-bold">${flow.status}</span>
           </div>
+          <p class="text-lg font-bold text-primary acc-break-words">${flow.summary}</p>
+          <p class="text-xs text-secondary mt-2 acc-break-words">月末残高は安全ラインを${balanceVsLine}見込みです。</p>
         </section>`;
     }
 
     return `
       <section class="rounded-xl card-shadow border-2 ${s.border} bg-surface-white overflow-hidden mb-md" data-acc="safety-hero">
         <div class="h-1.5 ${s.bar} w-full"></div>
-        <div class="p-lg grid grid-cols-1 md:grid-cols-3 gap-lg items-center">
-          <div>
-            <p class="text-label-md font-label-md text-secondary uppercase mb-2">Financial Safety Status</p>
-            <div class="flex items-center gap-3">
-              <span class="inline-flex items-center gap-2 px-4 py-2 rounded-full ${s.bg} ${s.text} text-xl font-bold uppercase tracking-wide">
-                <span class="material-symbols-outlined text-2xl" style="font-variation-settings:'FILL' 1">${s.icon}</span>
-                ${m.status}
-              </span>
+        <div class="p-lg">
+          <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-lg">
+            <div class="max-w-3xl">
+              <p class="text-label-md font-label-md text-secondary uppercase mb-2">${flow.asOfLabel}</p>
+              <div class="flex items-center gap-3 mb-md">
+                <span class="inline-flex items-center gap-2 px-4 py-2 rounded-full ${s.bg} ${s.text} text-xl font-bold">
+                  <span class="material-symbols-outlined text-2xl" style="font-variation-settings:'FILL' 1">${flow.icon}</span>
+                  ${flow.status}
+                </span>
+                <span class="text-sm text-secondary">収支と残高で判定</span>
+              </div>
+              <h3 class="font-headline-md text-headline-md text-primary font-bold acc-break-words">${flow.summary}</h3>
+              <p class="text-sm text-secondary mt-2 acc-break-words">${flow.helper}</p>
             </div>
-          </div>
-          <div class="text-center md:border-x border-border-subtle md:px-lg">
-            <p class="text-label-md font-label-md text-secondary uppercase mb-2">Financial Safety Score</p>
-            <p class="text-5xl font-bold text-primary tracking-tight">${m.score}<span class="text-2xl text-secondary font-semibold"> / 100</span></p>
-            <div class="w-full max-w-xs mx-auto bg-surface-container h-2 rounded-full mt-3 overflow-hidden">
-              <div class="${s.bar} h-full rounded-full transition-all duration-1000" style="width:${scorePct}%"></div>
+            <div class="bg-surface-container-low rounded-xl p-md min-w-[260px] border border-border-subtle">
+              <p class="text-[10px] text-secondary uppercase mb-1">月末残高</p>
+              <p class="text-3xl font-bold text-primary">${formatYen(flow.projectedBalance)}</p>
+              <p class="text-xs ${s.text} font-semibold mt-2 acc-break-words">${balanceText}</p>
+              <p class="text-[10px] text-secondary mt-1 acc-break-words">安全ライン: ${formatYen(flow.safetyBufferTarget)}</p>
             </div>
-          </div>
-          <div class="md:text-right" data-acc="runway">
-            <p class="text-label-md font-label-md text-secondary uppercase mb-2">Runway</p>
-            <p class="text-4xl font-bold text-primary">${m.runwayDays}<span class="text-xl font-semibold">日</span></p>
-            <p class="text-sm text-secondary mt-2">現在のペースなら <strong class="text-primary">${formatDateJa(m.safeUntilDate)}</strong> まで安全</p>
           </div>
         </div>
       </section>`;
@@ -245,31 +573,46 @@
   /** Secondary KPI row */
   function renderSecondaryKpis(data, compact) {
     const k = data.kpis;
+    const flow = getBalanceStatusContext(data);
     const card = compact
       ? "min-w-[140px] shrink-0 bg-surface-white p-4 rounded-xl shadow-sm border-t-2 border-primary"
       : "bg-surface-white p-md rounded-xl card-shadow border-t-2 border-primary";
 
+    const incomePeriod = k.projectedIncomePeriod || "monthly";
+    const expensePeriod = k.confirmedExpensesPeriod || "monthly";
+    const balancePeriod = k.projectedBalancePeriod || "balance";
+
     const wrap = compact
       ? `<div class="flex gap-3 overflow-x-auto pb-2 mb-4 snap-x" data-acc="kpis">`
-      : `<div class="grid grid-cols-1 md:grid-cols-3 gap-md mb-md" data-acc="kpis">`;
+      : `<div data-acc="kpis-block">
+          ${renderSurplusFlowLine(data)}
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-md mb-md" data-acc="kpis">`;
+
+    const close = compact ? `</div>` : `</div></div>`;
 
     return (
       wrap +
       `
       <div class="${card}">
-        <p class="text-label-md text-secondary mb-1 uppercase text-[10px]">予測収入 <span class="normal-case">(FleetMetric Pro)</span></p>
-        <p class="text-lg font-bold text-primary">${formatYen(k.projectedIncome)}</p>
-        <p class="text-[10px] text-secondary mt-1 acc-break-words">売上は FleetMetric Pro から同期 — 手入力なし</p>
+        <p class="text-label-md text-secondary mb-1 uppercase text-[10px]">予測収入 <span class="normal-case">(${PERIOD_LABEL[incomePeriod]})</span></p>
+        <p class="text-lg font-bold text-primary">${formatMoneyWithPeriod(k.projectedIncome, incomePeriod)}</p>
+        <p class="text-[10px] text-secondary mt-1 acc-break-words">FleetMetric Pro 同期</p>
       </div>
       <div class="${card.replace("border-primary", "border-status-caution")}">
-        <p class="text-label-md text-secondary mb-1 uppercase text-[10px]">確定支出</p>
-        <p class="text-lg font-bold text-primary">${formatYen(k.confirmedExpenses)}</p>
+        <p class="text-label-md text-secondary mb-1 uppercase text-[10px]">確定支出 <span class="normal-case">(${PERIOD_LABEL[expensePeriod]})</span></p>
+        <p class="text-lg font-bold text-primary">${formatMoneyWithPeriod(k.confirmedExpenses, expensePeriod)}</p>
       </div>
-      <div class="${card.replace("border-primary", "border-secondary")}">
-        <p class="text-label-md text-secondary mb-1 uppercase text-[10px]">予想残高</p>
-        <p class="text-lg font-bold text-primary">${formatYen(k.projectedBalance)}</p>
+      <div class="${card.replace("border-primary", flow.incomeExpenseDelta >= 0 ? "border-status-safe" : "border-status-danger")}">
+        <p class="text-label-md text-secondary mb-1 uppercase text-[10px]">収支</p>
+        <p class="text-lg font-bold ${flow.incomeExpenseDelta >= 0 ? "text-status-safe" : "text-status-danger"}">${formatYen(flow.incomeExpenseDelta)}</p>
+        <p class="text-[10px] text-secondary mt-1 acc-break-words">収入 − 支出</p>
       </div>
-    </div>`
+      <div class="${card.replace("border-primary", flow.reserveGap >= 0 ? "border-status-safe" : "border-status-danger")}">
+        <p class="text-label-md text-secondary mb-1 uppercase text-[10px]">予想残高 <span class="normal-case">(${PERIOD_LABEL[balancePeriod]})</span></p>
+        <p class="text-lg font-bold text-primary">${formatMoneyWithPeriod(k.projectedBalance, balancePeriod)}</p>
+        <p class="text-[10px] ${flow.reserveGap >= 0 ? "text-status-safe" : "text-status-danger"} font-semibold mt-1 acc-break-words">安全ラインとの差 ${formatYen(flow.reserveGap)}</p>
+      </div>
+    ${close}`
     );
   }
 
@@ -344,12 +687,12 @@
   /** Top 3 Actions */
   function renderTopActions(data) {
     const actions = data.brief.priorityActions.slice(0, 3);
-    const icons = { income: "payments", subscription: "subscriptions", tax: "account_balance", reserve: "savings", collection: "receipt_long" };
     const colors = ["border-status-caution", "border-primary", "border-status-safe"];
 
     const items = actions
       .map((a, i) => {
         const border = colors[i] || "border-border-subtle";
+        const impact = resolveActionImpactDisplay(a, data);
         return `
         <div class="group p-md border border-border-subtle rounded-xl hover:${border} hover:bg-surface-container-low transition-all cursor-pointer border-l-4 ${border}">
           <div class="flex items-start gap-md">
@@ -357,7 +700,8 @@
             <div class="flex-1">
               <p class="text-sm font-bold text-primary">${a.title}</p>
               <p class="text-xs text-secondary mt-1">${a.templateReason}</p>
-              ${a.impactYen > 0 ? `<p class="text-xs font-bold text-primary mt-1">${formatYen(a.impactYen)}</p>` : ""}
+              ${impact.amount > 0 ? `<p class="text-xs font-bold text-primary mt-1">${formatMoneyWithPeriod(impact.amount, impact.period)}</p>` : ""}
+              ${impact.sub ? `<p class="text-[10px] text-secondary mt-0.5">${impact.sub}</p>` : ""}
             </div>
             <span class="material-symbols-outlined text-outline group-hover:text-primary text-sm">chevron_right</span>
           </div>
@@ -509,15 +853,40 @@
       return `
       <section class="rounded-xl bg-status-safe/5 border border-status-safe/30 p-4 mb-3 card-shadow" data-acc="offensive-proposals">
         <p class="text-xs font-bold text-status-safe mb-1">攻めの提案</p>
-        <p class="text-sm text-primary acc-break-words">余剰 ${formatYen(s.amount || 0)} · 税金 ${formatYen(s.taxReserveSuggested || 0)} · AI開発 ${formatYen(s.aiDevBudgetSuggested || 0)}</p>
+        <p class="text-sm text-primary acc-break-words">余剰 ${formatMoneyWithPeriod(s.amount || 0, s.amountPeriod || "balance")} · 税金 ${formatMoneyWithPeriod(s.taxReserveSuggested || 0, "monthly")} · AI ${formatMoneyWithPeriod(s.aiDevBudgetSuggested || 0, "monthly")}</p>
       </section>`;
     }
 
+    const flow = getSurplusFlowContext(data);
     const cards = [
-      { icon: "savings", label: "余剰資金", value: formatYen(s.amount || 0), hint: "安全圏を超えた可処分額" },
-      { icon: "trending_up", label: "投資候補", value: formatYen(s.investmentCandidate || 0), hint: "低リスク積立・設備更新" },
-      { icon: "account_balance", label: "税金積立提案", value: formatYen(s.taxReserveSuggested || 0), hint: "今月収入の10%を納税準備口座へ" },
-      { icon: "code", label: "AI開発予算提案", value: formatYen(s.aiDevBudgetSuggested || 0), hint: "余剰からツール・API予算を拡大" },
+      {
+        icon: "savings",
+        label: "余剰資金",
+        amount: s.amount || 0,
+        period: s.amountPeriod || "balance",
+        hint: "予想残高 − 安全に必要な残高",
+      },
+      {
+        icon: "trending_up",
+        label: "投資候補",
+        amount: s.investmentCandidate || 0,
+        period: s.investmentCandidatePeriod || "monthly",
+        hint: "余剰から今月回す額",
+      },
+      {
+        icon: "account_balance",
+        label: "税金積立提案",
+        amount: s.taxReserveSuggested || 0,
+        period: s.taxReserveSuggestedPeriod || "monthly",
+        hint: `今月収入の ${flow.taxPct}%`,
+      },
+      {
+        icon: "code",
+        label: "AI開発予算提案",
+        amount: s.aiDevBudgetSuggested || 0,
+        period: s.aiDevBudgetSuggestedPeriod || "monthly",
+        hint: "余剰から今月の予算枠",
+      },
     ];
 
     return `
@@ -528,7 +897,7 @@
               <span class="material-symbols-outlined text-status-safe">rocket_launch</span>
               攻めの提案 — 今月は問題ありません
             </h3>
-            <p class="text-sm text-secondary acc-break-words">FleetMetric Pro の売上ペースは健全。余剰を次のアクションに回せます。</p>
+            <p class="text-sm text-secondary acc-break-words">余剰 ${formatMoneyWithPeriod(flow.surplus, "balance")} の配分案。根拠は下の収支カード。</p>
           </div>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-md">
@@ -538,7 +907,7 @@
             <div class="bg-surface-white rounded-xl p-md border border-border-subtle">
               <span class="material-symbols-outlined text-status-safe text-xl">${c.icon}</span>
               <p class="text-[10px] text-secondary uppercase mt-2">${c.label}</p>
-              <p class="text-xl font-bold text-primary">${c.value}</p>
+              <p class="text-xl font-bold text-primary">${formatMoneyWithPeriod(c.amount, c.period)}</p>
               <p class="text-xs text-secondary mt-1 acc-break-words">${c.hint}</p>
             </div>`,
             )
@@ -646,28 +1015,7 @@
   /** Dashboard content orchestrator */
   function renderDashboardContent(data, compact) {
     const hero = renderSafetyHero(data, compact);
-    const statusPanel =
-      data.metrics.status === "SAFE" ? renderOffensiveProposals(data, compact) : renderGapPriorityPanel(data);
-    const gapOrBanner =
-      data.metrics.status === "SAFE" ? "" : renderGapBanner(data);
-    const fmPanel = compact
-      ? renderFleetMetricSyncCompact(data)
-      : renderFleetMetricSyncCompact(data);
-
-    const core = compact
-      ? hero + gapOrBanner + statusPanel + renderCommanderBrief(data) + renderSecondaryKpis(data, true)
-      : hero + statusPanel + gapOrBanner + renderCommanderBrief(data) + renderSecondaryKpis(data, false);
-
-    return (
-      fmPanel +
-      core +
-      (compact
-        ? `<section class="bg-surface-white p-4 rounded-xl shadow-sm mb-4">${renderTopActions(data)}</section>`
-        : `<div class="grid grid-cols-1 lg:grid-cols-3 gap-xl mt-md">
-            <div class="lg:col-span-2 bg-surface-white rounded-xl card-shadow p-lg">${renderActionCalendar(data, "2026-06-15")}</div>
-            <div class="bg-surface-white rounded-xl card-shadow p-lg flex flex-col">${renderTopActions(data)}</div>
-          </div>`)
-    );
+    return hero + renderSecondaryKpis(data, compact) + renderBalanceBridge(data) + renderSurplusBrief(data);
   }
 
   function initResponsiveShell() {
@@ -687,6 +1035,129 @@
     backdrop?.addEventListener("click", close);
     window.addEventListener("resize", () => {
       if (window.innerWidth > 767) close();
+    });
+  }
+
+  function initSurplusBrief(root = document) {
+    const brief = root.querySelector("[data-acc='surplus-brief']");
+    if (!brief) return;
+
+    const options = Array.from(brief.querySelectorAll("[data-surplus-option]"));
+    const result = brief.querySelector("[data-surplus-result]");
+    if (!options.length || !result) return;
+
+    const cashEl = result.querySelector("[data-surplus-cash]");
+    const selectedEl = result.querySelector("[data-surplus-selected]");
+    const formulaEl = result.querySelector("[data-surplus-formula]");
+    const noteEl = result.querySelector("[data-surplus-note]");
+    const effect = root.querySelector("[data-allocation-effect]");
+    const effectLabel = effect?.querySelector("[data-allocation-effect-label]");
+    const effectNote = effect?.querySelector("[data-allocation-effect-note]");
+    const effectValue = effect?.querySelector("[data-allocation-effect-value]");
+    const effectBar = effect?.querySelector("[data-allocation-effect-bar]");
+    const balanceModel = root.querySelector("[data-balance-bridge-model]");
+    const reserveGapEl = root.querySelector("[data-balance-reserve-gap]");
+    const formulaExpenseEl = root.querySelector("[data-formula-expense]");
+    const formulaBalanceEl = root.querySelector("[data-formula-balance]");
+    const formulaGapEl = root.querySelector("[data-formula-gap]");
+    const balanceRows = {
+      expense: root.querySelector("[data-balance-row='expense']"),
+      balance: root.querySelector("[data-balance-row='balance']"),
+    };
+    const total = Number(result.dataset.surplusTotal || 0);
+    const format = (value) => formatYen(Number(value || 0));
+    const baseExpense = Number(balanceModel?.dataset.expense || 0);
+    const safetyLine = Number(balanceModel?.dataset.safety || 0);
+    const maxValue = Math.max(
+      Number(balanceModel?.dataset.opening || 0),
+      Number(balanceModel?.dataset.income || 0),
+      Number(balanceModel?.dataset.projected || 0),
+      baseExpense + total,
+      safetyLine + total,
+      1,
+    );
+    const widthFor = (value) => `${Math.max(12, Math.round((Math.abs(value) / maxValue) * 100))}%`;
+    const setRow = (row, value, note, tone = "text-primary") => {
+      if (!row) return;
+      const valueEl = row.querySelector("[data-balance-value]");
+      const noteEl = row.querySelector("[data-balance-note]");
+      const barEl = row.querySelector("[data-balance-bar]");
+      if (valueEl) {
+        valueEl.textContent = `${value < 0 ? "-" : ""}${format(Math.abs(value))}`;
+        valueEl.classList.toggle("text-status-caution", tone === "text-status-caution");
+        valueEl.classList.toggle("text-status-safe", tone === "text-status-safe");
+        valueEl.classList.toggle("text-primary", tone === "text-primary");
+      }
+      if (noteEl) noteEl.textContent = note;
+      if (barEl) barEl.style.width = widthFor(value);
+    };
+
+    function setSelected(option) {
+      const value = Number(option.dataset.value || 0);
+      const kind = option.dataset.kind || "expense";
+      const label = option.dataset.label || "";
+      const note = option.dataset.note || "";
+      const cashOnHand = kind === "cash" ? value : Math.max(total - value, 0);
+      const allocationSpend = kind === "cash" ? total - value : value;
+      const adjustedExpense = baseExpense + allocationSpend;
+      const adjustedBalance = safetyLine + cashOnHand;
+      const selectedText =
+        kind === "cash" ? `${label} +${format(value)} を選択中` : `${label} ${format(value)} を選択中`;
+      const formula =
+        kind === "cash"
+          ? `余剰金 ${format(total)} のうち ${label} +${format(value)} = 今使える現金 ${format(cashOnHand)}`
+          : `余剰金 ${format(total)} − ${label} ${format(value)} = 今使える現金 ${format(cashOnHand)}`;
+      const effectSign = kind === "cash" ? "+" : "−";
+      const effectTone = kind === "cash" ? "text-status-safe" : "text-status-caution";
+      const effectBarClass = kind === "cash" ? "bg-status-safe" : "bg-status-caution";
+
+      options.forEach((item) => {
+        const active = item === option;
+        item.setAttribute("aria-pressed", active ? "true" : "false");
+        item.classList.toggle("border-primary", active);
+        item.classList.toggle("bg-primary/5", active);
+        item.classList.toggle("ring-2", active);
+        item.classList.toggle("ring-primary/10", active);
+        item.classList.toggle("border-border-subtle", !active);
+        item.classList.toggle("bg-surface-container-low", !active);
+      });
+
+      if (cashEl) cashEl.textContent = format(cashOnHand);
+      if (selectedEl) selectedEl.textContent = selectedText;
+      if (formulaEl) formulaEl.textContent = formula;
+      if (noteEl) noteEl.textContent = note;
+      if (reserveGapEl) reserveGapEl.textContent = format(cashOnHand);
+      if (formulaExpenseEl) formulaExpenseEl.textContent = format(adjustedExpense);
+      if (formulaBalanceEl) formulaBalanceEl.textContent = format(adjustedBalance);
+      if (formulaGapEl) formulaGapEl.textContent = format(cashOnHand);
+      setRow(balanceRows.expense, -adjustedExpense, "選択中の配分を反映", "text-status-caution");
+      setRow(balanceRows.balance, adjustedBalance, "選択後の見込み", "text-primary");
+      if (effectLabel) effectLabel.textContent = label;
+      if (effectNote) effectNote.textContent = kind === "cash" ? "選択した現金枠" : "余剰金から使う額";
+      if (effectValue) {
+        effectValue.textContent = `${effectSign}${format(value)}`;
+        effectValue.classList.toggle("text-status-safe", kind === "cash");
+        effectValue.classList.toggle("text-status-caution", kind !== "cash");
+      }
+      if (effectBar) {
+        effectBar.style.width = `${Math.max(12, Math.round((value / total) * 100))}%`;
+        effectBar.classList.toggle("bg-status-safe", kind === "cash");
+        effectBar.classList.toggle("bg-status-caution", kind !== "cash");
+      }
+      if (effect) {
+        effect.classList.toggle("bg-status-safe/5", kind === "cash");
+        effect.classList.toggle("outline-status-safe/20", kind === "cash");
+        effect.classList.toggle("bg-status-caution/5", kind !== "cash");
+        effect.classList.toggle("outline-status-caution/20", kind !== "cash");
+      }
+      if (window.innerWidth < 768) {
+        const bridge = root.querySelector("[data-acc='balance-bridge']");
+        window.setTimeout(() => bridge?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+      }
+    }
+
+    options.forEach((option) => {
+      option.addEventListener("click", () => setSelected(option));
     });
   }
 
@@ -760,15 +1231,15 @@
   }
 
   function renderSidebarStatus(data) {
-    const m = data.metrics;
-    const s = statusStyle(m.status);
+    const flow = getBalanceStatusContext(data);
+    const s = flow.tone;
     return `<div class="px-2 mb-4" data-acc="sidebar-status">
-      <div class="text-label-md text-secondary mb-1 uppercase text-[10px]">Safety Status</div>
-      <span class="inline-flex items-center gap-1 ${s.text} font-bold text-sm">${m.status}</span>
+      <div class="text-label-md text-secondary mb-1 uppercase text-[10px]">今月の収支</div>
+      <span class="inline-flex items-center gap-1 ${s.text} font-bold text-sm">${flow.status}</span>
       <div class="w-full bg-surface-container h-1.5 rounded-full mt-2 overflow-hidden">
-        <div class="${s.bar} h-full rounded-full" style="width:${m.score}%"></div>
+        <div class="${s.bar} h-full rounded-full" style="width:${flow.reserveGap >= 0 ? 100 : 35}%"></div>
       </div>
-      <p class="text-[10px] text-secondary mt-1">${m.score}/100 · Runway ${m.runwayDays}日</p>
+      <p class="text-[10px] text-secondary mt-1">収支 ${formatYen(flow.incomeExpenseDelta)} · 残高 ${formatYen(flow.projectedBalance)}</p>
     </div>`;
   }
 
@@ -782,6 +1253,8 @@
 
   /** Embedded fallback — mirrors finance-core sample output when API offline */
   const FALLBACK_DASHBOARD = {
+    asOfMonth: "2026-06",
+    safetyBufferTarget: 1109220,
     metrics: {
       status: "SAFE",
       score: 100,
@@ -802,41 +1275,45 @@
       workDaysMessage: "追加稼働は不要です",
       primaryAction: {
         priority: 1,
-        id: "tax-reserve",
-        title: "税金積立 ¥125,000 を開始",
-        impactYen: 125000,
-        category: "tax",
-        templateReason: "今月収入の10%を納税準備口座へ",
+        id: "cancel-sub-dropbox",
+        title: "Dropbox Professional を解約（年間 ¥23,760 削減）",
+        impactYen: 23760,
+        impactPeriod: "yearly",
+        category: "subscription",
+        templateReason: "過去90日間の利用実績がありません（最終利用: 120日前）",
       },
       priorityActions: [
         {
           priority: 1,
-          id: "tax-reserve",
-          title: "税金積立 ¥125,000 を開始",
-          impactYen: 125000,
-          category: "tax",
-          templateReason: "今月収入の10%を納税準備口座へ",
-        },
-        {
-          priority: 2,
-          id: "ai-dev-budget",
-          title: "AI開発予算 ¥50,000 を確保",
-          impactYen: 50000,
-          category: "reserve",
-          templateReason: "余剰からツール・API予算を拡大",
-        },
-        {
-          priority: 3,
           id: "cancel-sub-dropbox",
           title: "Dropbox Professional を解約（年間 ¥23,760 削減）",
           impactYen: 23760,
+          impactPeriod: "yearly",
           category: "subscription",
           templateReason: "過去90日間の利用実績がありません（最終利用: 120日前）",
         },
+        {
+          priority: 2,
+          id: "subscription-cleanup",
+          title: "サブスク整理（月 ¥12,860 改善）",
+          impactYen: 12860,
+          impactPeriod: "monthly",
+          category: "subscription",
+          templateReason: "3 件の解約候補を検出",
+        },
+        {
+          priority: 3,
+          id: "tax-reserve",
+          title: "税金積立 ¥125,000 を開始",
+          impactYen: 125000,
+          impactPeriod: "monthly",
+          category: "tax",
+          templateReason: "今月収入の10%を納税準備口座へ",
+        },
       ],
       subscriptionOptimization: {
-        monthlySavingPotential: 4480,
-        yearlySavingPotential: 48960,
+        monthlySavingPotential: 12860,
+        yearlySavingPotential: 154320,
         candidates: [
           { subscriptionId: "sub-dropbox", name: "Dropbox Professional", monthlyCost: 1980, yearlySaving: 23760, reason: "過去90日間の利用実績がありません（最終利用: 120日前）", priority: 1 },
           { subscriptionId: "sub-zoom", name: "Zoom Pro", monthlyCost: 2100, yearlySaving: 25200, reason: "利用頻度が低いです（利用率 24%）。Google Meetで代替可能", priority: 2 },
@@ -857,8 +1334,11 @@
     },
     kpis: {
       projectedIncome: 1250000,
+      projectedIncomePeriod: "monthly",
       confirmedExpenses: 420000,
+      confirmedExpensesPeriod: "monthly",
       projectedBalance: 1429220,
+      projectedBalancePeriod: "balance",
     },
     fleetMetric: {
       lastSync: "2026-06-15T22:34:00",
@@ -870,9 +1350,13 @@
     },
     surplus: {
       amount: 320000,
+      amountPeriod: "balance",
       investmentCandidate: 150000,
+      investmentCandidatePeriod: "monthly",
       taxReserveSuggested: 125000,
+      taxReserveSuggestedPeriod: "monthly",
       aiDevBudgetSuggested: 50000,
+      aiDevBudgetSuggestedPeriod: "monthly",
     },
     simulations: [
       {
@@ -1164,6 +1648,7 @@
     statusStyle,
     bindTapScale,
     initResponsiveShell,
+    initSurplusBrief,
     FALLBACK_DASHBOARD,
     CAUTION_FALLBACK,
     DANGER_FALLBACK,

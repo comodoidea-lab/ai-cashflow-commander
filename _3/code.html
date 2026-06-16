@@ -208,6 +208,7 @@
     AccApi.statusStyle(m.status).bg + " " + AccApi.statusStyle(m.status).text;
 
   root.innerHTML = AccApi.renderDashboardContent(data, true);
+  AccApi.initSurplusBrief(root);
   AccApi.bindTapScale();
 })();
 </script>

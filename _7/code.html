@@ -172,6 +172,7 @@
   document.getElementById("acc-sidebar-status").innerHTML = AccApi.renderSidebarStatus(data);
 
   root.innerHTML = AccApi.renderDashboardContent(data, false);
+  AccApi.initSurplusBrief(root);
   AccApi.bindTapScale();
 })();
 </script>
