@@ -154,16 +154,19 @@
 <p class="acc-brand-sub font-label-md text-secondary opacity-70">Commander</p>
 </div>
 <nav class="flex-1 space-y-sm">
+<div class="acc-sidebar-primary-nav space-y-sm">
 <a class="acc-nav-label flex items-center gap-md p-md rounded-lg text-secondary hover:bg-surface-container-low" href="../_7/code.html"><span class="material-symbols-outlined">dashboard</span><span>Dashboard</span></a>
 <a class="acc-nav-label flex items-center gap-md p-md rounded-lg text-primary font-bold border-r-4 border-primary bg-surface-container-low" href="code.html"><span class="material-symbols-outlined">payments</span><span>Cashflow</span></a>
 <a class="acc-nav-label flex items-center gap-md p-md rounded-lg text-secondary hover:bg-surface-container-low" href="../_8/code.html"><span class="material-symbols-outlined">subscriptions</span><span>Subscriptions</span></a>
 <a class="acc-nav-label flex items-center gap-md p-md rounded-lg text-secondary hover:bg-surface-container-low" href="../ai_3/code.html"><span class="material-symbols-outlined">psychology</span><span>AI Insights</span></a>
+</div>
+<p class="acc-mobile-nav-hint text-xs text-secondary px-md mt-md">画面下部のナビから各画面へ移動できます</p>
 </nav>
 </aside>
 <div class="acc-shell">
 <header class="acc-topbar">
 <div class="flex items-center gap-3 min-w-0 flex-1">
-<button class="acc-menu-btn p-2 rounded-lg hover:bg-surface-container" id="acc-menu-toggle" type="button"><span class="material-symbols-outlined">menu</span></button>
+<button class="acc-menu-btn p-2 rounded-lg hover:bg-surface-container" id="acc-menu-toggle" type="button" aria-label="メニュー"><span class="material-symbols-outlined">menu</span></button>
 <div class="relative w-full max-w-md acc-search-wide">
 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
 <input class="w-full pl-10 pr-md py-xs bg-surface-container-low border-none rounded-xl font-body-sm min-w-0" placeholder="取引を検索..." type="text"/>
@@ -178,50 +181,57 @@
 <div class="acc-main-inner">
 <div class="acc-page-header">
 <div class="min-w-0">
-<nav class="flex flex-wrap gap-xs text-outline font-label-md mb-xs"><span>ホーム</span><span>/</span><span>キャッシュフロー</span><span>/</span><span class="text-primary">明細取り込み</span></nav>
+<nav class="flex flex-wrap gap-xs text-outline font-label-md mb-xs" data-acc-verbose="true"><span>ホーム</span><span>/</span><span>キャッシュフロー</span><span>/</span><span class="text-primary">明細取り込み</span></nav>
 <h2 class="font-headline-lg text-primary tracking-tight acc-break-words">明細の取り込み</h2>
-<p class="text-sm text-secondary acc-break-words">支出・カード明細の取り込み（売上は FleetMetric Pro から同期）</p>
+<p class="text-sm text-secondary acc-break-words" data-acc-verbose="true">支出・カード明細の取り込み（売上は FleetMetric Pro から同期）</p>
 </div>
-<button class="btn-depress w-full sm:w-auto px-lg py-md bg-primary text-on-primary rounded-xl font-bold flex items-center justify-center gap-sm shadow-lg">
-<span class="material-symbols-outlined">magic_button</span>AI解析を開始する
+<button class="btn-depress w-full sm:w-auto px-lg py-md bg-primary text-on-primary rounded-xl font-bold flex items-center justify-center gap-sm shadow-lg" data-import-cta type="button">
+<span class="material-symbols-outlined">magic_button</span><span data-import-cta-label>CSVを解析する</span>
 </button>
 </div>
+<div id="acc-cashflow-easy"></div>
+
+<details id="acc-cashflow-details" class="acc-details-panel acc-page-details" open>
+<summary class="acc-details-summary">くわしく見る（取込タブ・明細一覧）</summary>
+<div class="acc-details-body">
+
 <div id="acc-import-api-panel"></div>
 <!-- Import Section Bento Grid -->
 <div class="grid grid-cols-1 xl:grid-cols-12 gap-lg mb-xl">
 <div class="xl:col-span-8 fin-card rounded-xl overflow-hidden flex flex-col min-w-0">
-<div class="flex border-b border-border-subtle">
-<button class="flex-1 py-md font-label-md text-label-md text-primary tab-active transition-all" id="tab-csv" onclick="switchTab('csv')">CSVアップロード</button>
-<button class="flex-1 py-md font-label-md text-label-md text-secondary hover:text-primary transition-all" id="tab-ss" onclick="switchTab('ss')">スクリーンショット</button>
-<button class="flex-1 py-md font-label-md text-label-md text-secondary hover:text-primary transition-all" id="tab-ai" onclick="switchTab('ai')">AIスキャン</button>
+<div class="flex border-b border-border-subtle" role="tablist" aria-label="取り込み方法">
+<button class="flex-1 py-md font-label-md text-label-md text-primary tab-active transition-all" id="tab-csv" role="tab" aria-selected="true" aria-controls="acc-import-panel" data-acc-import-tab="csv" type="button">CSVアップロード</button>
+<button class="flex-1 py-md font-label-md text-label-md text-secondary hover:text-primary transition-all" id="tab-ss" role="tab" aria-selected="false" aria-controls="acc-import-panel" data-acc-import-tab="ss" type="button">スクリーンショット</button>
+<button class="flex-1 py-md font-label-md text-label-md text-secondary hover:text-primary transition-all" id="tab-ai" role="tab" aria-selected="false" aria-controls="acc-import-panel" data-acc-import-tab="ai" type="button">AIスキャン</button>
 </div>
-<div class="p-xl flex-1 flex flex-col items-center justify-center text-center">
-<div class="w-full max-w-lg aspect-video drag-dash rounded-xl flex flex-col items-center justify-center cursor-pointer group transition-all hover:bg-surface-container-lowest" id="dropzone">
+<p class="px-lg pt-md text-xs text-secondary acc-break-words" data-import-status>銀行明細モード — 複数口座の合算にも対応</p>
+<div class="p-xl flex-1 flex flex-col items-center justify-center text-center" id="acc-import-panel" role="tabpanel" aria-labelledby="tab-csv" data-acc-import-panel>
+<div class="w-full max-w-lg aspect-video drag-dash rounded-xl flex flex-col items-center justify-center cursor-pointer group transition-all hover:bg-surface-container-lowest" id="dropzone" data-import-dropzone>
 <div class="w-16 h-16 bg-primary-fixed rounded-full flex items-center justify-center mb-md group-hover:scale-110 transition-transform">
-<span class="material-symbols-outlined text-primary text-3xl" data-icon="cloud_upload" style="font-variation-settings: 'FILL' 1;">cloud_upload</span>
+<span class="material-symbols-outlined text-primary text-3xl" data-icon="cloud_upload" data-import-icon style="font-variation-settings: 'FILL' 1;">cloud_upload</span>
 </div>
-<h3 class="font-headline-md text-headline-md text-primary mb-xs">ファイルをドロップしてアップロード</h3>
-<p class="font-body-md text-body-md text-secondary">または、デバイスからファイルを選択してください</p>
-<p class="mt-lg font-label-md text-label-md text-outline uppercase tracking-widest">Supports: CSV, PDF, JPG, PNG</p>
+<h3 class="font-headline-md text-headline-md text-primary mb-xs" data-import-title>銀行明細CSVをドロップ</h3>
+<p class="font-body-md text-body-md text-secondary" data-import-description>口座の取引CSVをアップロードすると、支出・収入を自動分類します</p>
+<p class="mt-lg font-label-md text-label-md text-outline uppercase tracking-widest" data-import-formats>Supports: CSV</p>
 </div>
 </div>
 </div>
 <div class="xl:col-span-4 space-y-lg min-w-0">
-<div class="fin-card p-lg rounded-xl border-t-2 border-status-safe">
+<div class="fin-card p-lg rounded-xl border-t-2 border-status-safe transition-all" data-import-hint="csv">
 <div class="flex items-center gap-sm mb-md">
 <span class="material-symbols-outlined text-status-safe" data-icon="info">info</span>
 <h4 class="font-body-md text-body-md font-bold">銀行明細の取り込み</h4>
 </div>
-<p class="font-body-sm text-body-sm text-secondary leading-relaxed">
+<p class="font-body-sm text-body-sm text-secondary leading-relaxed" data-acc-verbose="true">
                                 CSV形式の銀行明細をアップロードすると、AIが自動的に支出・収入を分類します。複数口座の合算も可能です。
                             </p>
 </div>
-<div class="fin-card p-lg rounded-xl border-t-2 border-status-caution">
+<div class="fin-card p-lg rounded-xl border-t-2 border-status-caution transition-all" data-import-hint="ss ai">
 <div class="flex items-center gap-sm mb-md">
 <span class="material-symbols-outlined text-status-caution" data-icon="receipt_long">receipt_long</span>
 <h4 class="font-body-md text-body-md font-bold">領収書のスキャン</h4>
 </div>
-<p class="font-body-sm text-body-sm text-secondary leading-relaxed">
+<p class="font-body-sm text-body-sm text-secondary leading-relaxed" data-acc-verbose="true">
                                 スマートフォンのカメラで撮影した領収書や、PDFのレシートをドラッグ＆ドロップしてください。金額、日付、店名を抽出します。
                             </p>
 </div>
@@ -326,6 +336,9 @@
 </div>
 </div>
 </div>
+
+</details>
+</div>
 </main>
 </div>
 <nav class="acc-mobile-nav">
@@ -335,46 +348,6 @@
 <a href="../ai_3/code.html"><span class="material-symbols-outlined">psychology</span>AI</a>
 </nav>
 </div>
-<!-- Micro-interactions Script -->
-<script>
-        function switchTab(tabId) {
-            const tabs = ['csv', 'ss', 'ai'];
-            tabs.forEach(t => {
-                const el = document.getElementById('tab-' + t);
-                if (t === tabId) {
-                    el.classList.add('tab-active');
-                    el.classList.add('text-primary');
-                    el.classList.remove('text-secondary');
-                } else {
-                    el.classList.remove('tab-active');
-                    el.classList.remove('text-primary');
-                    el.classList.add('text-secondary');
-                }
-            });
-            
-            // Subtle transition effect for dropzone content
-            const dropzone = document.getElementById('dropzone');
-            dropzone.style.opacity = 0;
-            setTimeout(() => {
-                dropzone.style.opacity = 1;
-            }, 100);
-        }
-
-        // Add drag & drop simple visual feedback
-        const dz = document.getElementById('dropzone');
-        dz.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dz.classList.add('bg-primary-fixed/20');
-        });
-        dz.addEventListener('dragleave', () => {
-            dz.classList.remove('bg-primary-fixed/20');
-        });
-        dz.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dz.classList.remove('bg-primary-fixed/20');
-            alert('CSVは /api/import/csv で解析（LLM不使用）');
-        });
-    </script>
 <script src="../ai_cashflow_commander/api-client.js"></script>
 <script>
 (async function bootImportPage() {
@@ -386,10 +359,15 @@
 
   const dashResult = await AccApi.fetchDashboard();
   const csvResult = await AccApi.fetchCsvPreview(sampleCsv);
-  document.getElementById("acc-import-api-panel").innerHTML =
-    AccApi.renderImportApiPanel(dashResult.data, dashResult, csvResult);
-  document.getElementById("acc-fleetmetric-sync-root").innerHTML =
-    AccApi.renderFleetMetricSyncPanel(dashResult.data, dashResult);
+  const data = dashResult.data;
+
+  AccApi.remountCashflow(data, dashResult, csvResult);
+  window.addEventListener("acc-density-change", () => {
+    AccApi.remountCashflow(data, dashResult, csvResult);
+  });
+  window.addEventListener("acc-gentle-change", () => {
+    AccApi.remountCashflow(data, dashResult, csvResult);
+  });
 })();
 </script>
 </body></html>

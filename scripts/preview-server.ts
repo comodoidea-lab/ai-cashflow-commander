@@ -3,12 +3,10 @@
  * Usage: npx tsx scripts/preview-server.ts
  */
 import { createServer } from "node:http";
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { join, extname } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  buildDeterministicDashboard,
-  createSampleFinanceInput,
   buildFallbackCopy,
   parseCsvTransactions,
   aggregateMonthlyFromTransactions,
@@ -17,6 +15,18 @@ import {
 
 const ROOT = join(fileURLToPath(new URL(".", import.meta.url)), "..");
 const PORT = 8080;
+
+let dashboardCache: { mtimeMs: number; data: unknown } = { mtimeMs: 0, data: null };
+
+async function getDashboard() {
+  const jsonPath = join(ROOT, "ai_cashflow_commander/fallback-dashboard.json");
+  const st = await stat(jsonPath);
+  if (!dashboardCache.data || st.mtimeMs !== dashboardCache.mtimeMs) {
+    const raw = await readFile(jsonPath, "utf8");
+    dashboardCache = { mtimeMs: st.mtimeMs, data: JSON.parse(raw) };
+  }
+  return dashboardCache.data as Record<string, unknown>;
+}
 
 const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -60,13 +70,8 @@ const server = createServer(async (req, res) => {
   }
 
   if (path === "/api/dashboard/deterministic" && req.method === "POST") {
-    const partial = buildDeterministicDashboard(createSampleFinanceInput());
-    return json(res, {
-      metrics: partial.metrics,
-      brief: partial.brief,
-      kpis: partial.kpis,
-      copy: buildFallbackCopy(partial.brief),
-    });
+    const data = await getDashboard();
+    return json(res, data);
   }
 
   if (path === "/api/import/csv" && req.method === "POST") {

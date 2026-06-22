@@ -3,6 +3,7 @@
 <html class="light" lang="ja"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AI Insights — AI Cashflow Commander</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
@@ -138,23 +139,39 @@
 <p class="acc-brand-sub text-on-primary-container font-label-md mt-xs">Commander</p>
 </div>
 <nav class="flex-1 space-y-sm">
+<div class="acc-sidebar-primary-nav space-y-sm">
 <a class="acc-nav-label flex items-center gap-md p-md rounded-lg text-secondary hover:bg-surface-container-low" href="../_7/code.html"><span class="material-symbols-outlined">dashboard</span><span>Dashboard</span></a>
 <a class="acc-nav-label flex items-center gap-md p-md rounded-lg text-secondary hover:bg-surface-container-low" href="../_9/code.html"><span class="material-symbols-outlined">payments</span><span>Cashflow</span></a>
 <a class="acc-nav-label flex items-center gap-md p-md rounded-lg text-secondary hover:bg-surface-container-low" href="../_8/code.html"><span class="material-symbols-outlined">subscriptions</span><span>Subscriptions</span></a>
 <a class="acc-nav-label flex items-center gap-md p-md rounded-lg text-primary font-bold border-r-4 border-primary bg-surface-container-low" href="code.html"><span class="material-symbols-outlined">psychology</span><span>AI Insights</span></a>
+</div>
+<p class="acc-mobile-nav-hint text-xs text-secondary px-md mt-md">画面下部のナビから各画面へ移動できます</p>
 </nav>
 </aside>
 <div class="acc-shell">
 <header class="acc-topbar">
 <div class="flex items-center gap-3 min-w-0">
-<button class="acc-menu-btn p-2 rounded-lg hover:bg-surface-container" id="acc-menu-toggle" type="button"><span class="material-symbols-outlined">menu</span></button>
-<h2 class="font-bold text-primary">AI Insights</h2>
+<button class="acc-menu-btn p-2 rounded-lg hover:bg-surface-container" id="acc-menu-toggle" type="button" aria-label="メニュー"><span class="material-symbols-outlined">menu</span></button>
 </div>
+<div class="flex items-center gap-2 shrink-0">
 <span id="acc-api-status"></span>
+</div>
 </header>
 <main class="acc-main">
 <div class="acc-main-inner">
+<div class="acc-page-header">
+<div class="min-w-0">
+<h1 class="font-headline-lg text-headline-lg text-primary acc-break-words">AI Insights</h1>
+<p class="text-secondary font-body-md acc-break-words" data-acc-verbose="true">未来のお金の変化を試算します</p>
+</div>
+</div>
+<div id="acc-insights-easy"></div>
+<details id="acc-insights-details" class="acc-details-panel acc-page-details" open>
+<summary class="acc-details-summary">くわしく見る（全シナリオ）</summary>
+<div class="acc-details-body">
 <div id="acc-insights-root"><div class="animate-pulse bg-surface-white h-48 rounded-xl"></div></div>
+</div>
+</details>
 </div>
 </main>
 </div>
@@ -171,8 +188,14 @@
   AccApi.initResponsiveShell();
   const result = await AccApi.fetchDashboard();
   const data = result.data;
-  document.getElementById("acc-api-status").innerHTML = AccApi.renderApiStatus(result);
-  document.getElementById("acc-insights-root").innerHTML = AccApi.renderSimulationPanel(data);
+
+  AccApi.remountInsights(data, result);
+  window.addEventListener("acc-density-change", () => {
+    AccApi.remountInsights(data, result);
+  });
+  window.addEventListener("acc-gentle-change", () => {
+    AccApi.remountInsights(data, result);
+  });
 })();
 </script>
 </body></html>

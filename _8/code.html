@@ -40,6 +40,7 @@ tailwind.config = {
       <p class="acc-brand-sub text-on-primary-container font-label-md text-label-md">Commander</p>
     </div>
     <nav class="flex-1 space-y-xs">
+      <div class="acc-sidebar-primary-nav space-y-xs">
       <a class="acc-nav-label flex items-center gap-sm px-md py-sm rounded-lg text-secondary hover:bg-surface-container-low transition-colors" href="../_7/code.html">
         <span class="material-symbols-outlined">dashboard</span><span class="font-body-md">Dashboard</span>
       </a>
@@ -52,6 +53,8 @@ tailwind.config = {
       <a class="acc-nav-label flex items-center gap-sm px-md py-sm rounded-lg text-secondary hover:bg-surface-container-low transition-colors" href="../ai_3/code.html">
         <span class="material-symbols-outlined">psychology</span><span class="font-body-md">AI Insights</span>
       </a>
+      </div>
+      <p class="acc-mobile-nav-hint text-xs text-secondary px-md mt-md">画面下部のナビから各画面へ移動できます</p>
     </nav>
   </aside>
 
@@ -77,13 +80,19 @@ tailwind.config = {
         <div class="acc-page-header">
           <div class="min-w-0">
             <h1 class="font-headline-lg text-headline-lg text-primary acc-break-words">サブスク管理</h1>
-            <p class="text-secondary font-body-md acc-break-words">支出を最適化し、キャッシュフローの精度を高めます</p>
+            <p class="text-secondary font-body-md acc-break-words" data-acc-verbose="true">支出を最適化し、キャッシュフローの精度を高めます</p>
           </div>
           <div class="bg-surface-white px-md py-sm rounded-xl border border-border-subtle shadow-sm flex items-center gap-sm shrink-0">
-            <span class="text-secondary font-label-md">Monthly Total</span>
-            <span class="font-numeric-data text-primary">¥14,020</span>
+            <span class="text-secondary font-label-md">月額合計</span>
+            <span class="font-numeric-data text-primary" id="acc-subs-monthly-total">¥2,870</span>
           </div>
         </div>
+
+        <div id="acc-subs-easy"></div>
+
+        <details id="acc-subs-details" class="acc-details-panel acc-page-details" open>
+          <summary class="acc-details-summary">くわしく見る（一覧・監査レポート）</summary>
+          <div class="acc-details-body">
 
         <div id="acc-opt-panel"></div>
 
@@ -96,7 +105,7 @@ tailwind.config = {
               <h2 class="font-headline-md text-headline-md mb-xs">AI監査アラート</h2>
               <p class="text-on-primary-container text-body-md acc-break-words" id="acc-audit-text">読み込み中…</p>
             </div>
-            <button class="w-full sm:w-auto bg-white/10 hover:bg-white/20 text-white px-lg py-md rounded-xl border border-white/20 shrink-0">監査レポートを見る</button>
+            <button type="button" data-acc-subs-cta="audit-report" class="w-full sm:w-auto bg-white/10 hover:bg-white/20 text-white px-lg py-md rounded-xl border border-white/20 shrink-0">監査レポートを見る</button>
           </div>
         </section>
 
@@ -114,35 +123,31 @@ tailwind.config = {
               </thead>
               <tbody class="divide-y divide-border-subtle">
                 <tr class="hover:bg-surface-container-lowest">
-                  <td class="px-lg py-md"><div class="flex items-center gap-md min-w-0"><div class="h-10 w-10 bg-error/10 rounded flex items-center justify-center font-bold text-error shrink-0">Ps</div><span class="font-bold text-primary acc-break-words">Adobe Creative Cloud</span></div></td>
-                  <td class="px-lg py-md font-numeric-data whitespace-nowrap">¥6,480</td>
-                  <td class="px-lg py-md"><span class="bg-surface-container-high text-secondary px-sm py-xs rounded text-label-md">Design</span></td>
-                  <td class="px-lg py-md"><span class="text-status-safe font-bold text-xs">High 92%</span></td>
+                  <td class="px-lg py-md"><div class="flex items-center gap-md min-w-0"><div class="h-10 w-10 bg-error/10 rounded flex items-center justify-center font-bold text-error shrink-0">N</div><span class="font-bold text-primary acc-break-words">Netflix</span></div></td>
+                  <td class="px-lg py-md font-numeric-data whitespace-nowrap">¥1,490</td>
+                  <td class="px-lg py-md"><span class="bg-surface-container-high text-secondary px-sm py-xs rounded text-label-md">動画</span></td>
+                  <td class="px-lg py-md"><span class="text-status-danger font-bold text-xs">Low 8%</span></td>
+                  <td class="px-lg py-md"><span class="text-on-error bg-status-danger px-sm py-xs rounded-full text-label-md font-bold">解約推奨</span></td>
+                </tr>
+                <tr class="hover:bg-surface-container-lowest">
+                  <td class="px-lg py-md acc-break-words" colspan="5"><p class="text-xs text-secondary pl-14">今月の視聴は2時間のみ — 生活必需品ではない</p></td>
+                </tr>
+                <tr class="hover:bg-surface-container-lowest">
+                  <td class="px-lg py-md"><div class="flex items-center gap-md min-w-0"><div class="h-10 w-10 bg-primary/10 rounded flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-primary">music_note</span></div><span class="font-bold text-primary acc-break-words">Spotify</span></div></td>
+                  <td class="px-lg py-md font-numeric-data whitespace-nowrap">¥980</td>
+                  <td class="px-lg py-md"><span class="bg-surface-container-high text-secondary px-sm py-xs rounded text-label-md">音楽</span></td>
+                  <td class="px-lg py-md"><span class="text-status-caution font-bold text-xs">Medium 35%</span></td>
+                  <td class="px-lg py-md acc-break-words"><span class="text-status-caution text-label-md font-bold">無料プランで代替可</span></td>
+                </tr>
+                <tr class="hover:bg-surface-container-lowest">
+                  <td class="px-lg py-md"><div class="flex items-center gap-md min-w-0"><div class="h-10 w-10 bg-status-safe/10 rounded flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-status-safe">cloud</span></div><span class="font-bold text-primary acc-break-words">iCloud+ 200GB</span></div></td>
+                  <td class="px-lg py-md font-numeric-data whitespace-nowrap">¥400</td>
+                  <td class="px-lg py-md"><span class="bg-surface-container-high text-secondary px-sm py-xs rounded text-label-md">Storage</span></td>
+                  <td class="px-lg py-md"><span class="text-status-safe font-bold text-xs">High 100%</span></td>
                   <td class="px-lg py-md"><span class="text-status-safe bg-status-safe/10 px-sm py-xs rounded-full text-label-md font-bold">維持推奨</span></td>
                 </tr>
                 <tr class="hover:bg-surface-container-lowest">
-                  <td class="px-lg py-md acc-break-words" colspan="5"><p class="text-xs text-secondary pl-14">FleetMetric Pro / AI開発 / 動画制作に使用 · 利用率高 · 代替コスト高</p></td>
-                </tr>
-                <tr class="hover:bg-surface-container-lowest">
-                  <td class="px-lg py-md"><div class="flex items-center gap-md min-w-0"><div class="h-10 w-10 bg-primary/10 rounded flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-primary">videocam</span></div><span class="font-bold text-primary acc-break-words">Zoom Pro Plan</span></div></td>
-                  <td class="px-lg py-md font-numeric-data whitespace-nowrap">¥2,100</td>
-                  <td class="px-lg py-md"><span class="bg-surface-container-high text-secondary px-sm py-xs rounded text-label-md">Comm.</span></td>
-                  <td class="px-lg py-md"><span class="text-status-caution font-bold text-xs">Medium 45%</span></td>
-                  <td class="px-lg py-md acc-break-words"><span class="text-status-caution text-label-md font-bold">Alternative available</span></td>
-                </tr>
-                <tr class="hover:bg-surface-container-lowest">
-                  <td class="px-lg py-md"><div class="flex items-center gap-md min-w-0"><div class="h-10 w-10 bg-status-safe/10 rounded flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-status-safe">auto_awesome</span></div><span class="font-bold text-primary acc-break-words">ChatGPT Plus</span></div></td>
-                  <td class="px-lg py-md font-numeric-data whitespace-nowrap">¥3,000</td>
-                  <td class="px-lg py-md"><span class="bg-surface-container-high text-secondary px-sm py-xs rounded text-label-md">AI</span></td>
-                  <td class="px-lg py-md"><span class="text-status-safe font-bold text-xs">High 100%</span></td>
-                  <td class="px-lg py-md"><span class="text-status-safe bg-status-safe/10 px-sm py-xs rounded-full text-label-md font-bold">Core</span></td>
-                </tr>
-                <tr class="hover:bg-surface-container-lowest">
-                  <td class="px-lg py-md"><div class="flex items-center gap-md min-w-0"><div class="h-10 w-10 bg-secondary/10 rounded flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-secondary">cloud</span></div><span class="font-bold text-primary acc-break-words">Dropbox Professional</span></div></td>
-                  <td class="px-lg py-md font-numeric-data whitespace-nowrap">¥2,400</td>
-                  <td class="px-lg py-md"><span class="bg-surface-container-high text-secondary px-sm py-xs rounded text-label-md">Storage</span></td>
-                  <td class="px-lg py-md"><span class="text-status-danger font-bold text-xs">Zero 90d</span></td>
-                  <td class="px-lg py-md"><span class="text-on-error bg-status-danger px-sm py-xs rounded-full text-label-md font-bold">解約推奨</span></td>
+                  <td class="px-lg py-md acc-break-words" colspan="5"><p class="text-xs text-secondary pl-14">写真・書類のバックアップ用 — 月¥400のみ</p></td>
                 </tr>
               </tbody>
             </table>
@@ -156,13 +161,16 @@ tailwind.config = {
                 <span class="text-on-primary-container font-label-md uppercase text-xs">Potential Total Savings</span>
                 <span class="font-numeric-data text-headline-md text-white" id="acc-footer-savings">—</span>
               </div>
-              <button class="bg-white text-primary px-xl py-md rounded-xl font-bold flex items-center justify-center gap-sm hover:bg-surface-container active:scale-95">
+              <button type="button" data-acc-subs-cta="bulk-cleanup" class="bg-white text-primary px-xl py-md rounded-xl font-bold flex items-center justify-center gap-sm hover:bg-surface-container active:scale-95">
                 <span class="material-symbols-outlined">cleaning_services</span>
                 <span class="acc-break-words">一括クリーンアップを実行</span>
               </button>
             </div>
           </div>
         </footer>
+
+          </div>
+        </details>
       </div>
     </main>
   </div>
@@ -181,17 +189,14 @@ tailwind.config = {
   AccApi.initResponsiveShell();
   const result = await AccApi.fetchDashboard();
   const data = result.data;
-  const opt = data.brief.subscriptionOptimization;
 
-  document.getElementById("acc-api-status").innerHTML = AccApi.renderApiStatus(result);
-  document.getElementById("acc-opt-panel").innerHTML = AccApi.renderOptimizationPanel(data);
-  document.getElementById("acc-footer-savings").textContent = AccApi.formatYen(opt.yearlySavingPotential) + " /yr";
-
-  const top = opt.candidates[0];
-  document.getElementById("acc-audit-text").innerHTML = top
-    ? `<strong class="text-white">${opt.candidates.length}件</strong>の解約候補を検出。` +
-      `<strong class="text-white">${top.name}</strong>を解約すると年間 <strong class="text-white">${AccApi.formatYen(top.yearlySaving)}</strong> 削減。理由: ${top.reason}`
-    : "解約候補はありません。";
+  AccApi.remountSubscriptions(data, result);
+  window.addEventListener("acc-density-change", () => {
+    AccApi.remountSubscriptions(data, result);
+  });
+  window.addEventListener("acc-gentle-change", () => {
+    AccApi.remountSubscriptions(data, result);
+  });
 })();
 </script>
 </body>

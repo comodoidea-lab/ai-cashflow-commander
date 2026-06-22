@@ -10,14 +10,14 @@ import {
 } from "../src/index.js";
 
 describe("Layer 1: Safety Score", () => {
-  it("computes CAUTION status for sample input", () => {
+  it("computes DANGER status for tight-cash sample input", () => {
     const input = createSampleFinanceInput();
     const metrics = computeSafetyMetrics(input);
 
-    expect(metrics.score).toBeGreaterThan(0);
+    expect(metrics.score).toBeGreaterThanOrEqual(0);
     expect(metrics.score).toBeLessThanOrEqual(100);
-    expect(["SAFE", "CAUTION", "DANGER"]).toContain(metrics.status);
-    expect(metrics.runwayDays).toBeGreaterThan(0);
+    expect(metrics.status).toBe("DANGER");
+    expect(metrics.runwayDays).toBeGreaterThanOrEqual(0);
     expect(metrics.safeUntilDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
@@ -43,13 +43,13 @@ describe("Layer 1: Subscriptions", () => {
 
     expect(result.candidates.length).toBeGreaterThan(0);
     expect(result.monthlySavingPotential).toBeGreaterThan(0);
-    expect(result.candidates.some((c) => c.name.includes("Dropbox"))).toBe(true);
+    expect(result.candidates.some((c) => c.name.includes("Netflix"))).toBe(true);
   });
 
-  it("flags duplicate design category", () => {
+  it("does not flag duplicate categories for lean subscription stack", () => {
     const input = createSampleFinanceInput();
     const result = analyzeSubscriptions(input.subscriptions);
-    expect(result.duplicateCategories).toContain("design");
+    expect(result.duplicateCategories).toEqual([]);
   });
 });
 
@@ -65,10 +65,10 @@ describe("Layer 2: Rule-based Advisor", () => {
 
   it("includes payment warnings within 3 days window", () => {
     const input = createSampleFinanceInput();
-    input.asOfDate = "2026-06-22"; // 2 days before card payment on 25th
+    input.asOfDate = "2026-06-23"; // 車ローンまで3日
     const brief = buildAdvisorBrief(input);
 
-    expect(brief.paymentWarnings.some((w) => w.name.includes("カード"))).toBe(true);
+    expect(brief.paymentWarnings.some((w) => w.name.includes("車ローン"))).toBe(true);
   });
 });
 

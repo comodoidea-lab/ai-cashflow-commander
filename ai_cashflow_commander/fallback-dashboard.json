@@ -1,152 +1,158 @@
 {
   "asOfMonth": "2026-06",
-  "safetyBufferTarget": 1109220,
+  "safetyBufferTarget": 50000,
+  "revolvingDebt": {
+    "balance": 480000,
+    "minimumPayment": 28000,
+    "aprPercent": 15
+  },
   "metrics": {
-    "status": "SAFE",
-    "score": 100,
-    "gapToSafety": 0,
-    "runwayDays": 112,
-    "safeUntilDate": "2026-10-05",
-    "projectedBalanceAfterPayments": 1429220,
-    "monthlyBurnRate": 380000
+    "status": "DANGER",
+    "score": 24,
+    "gapToSafety": 41500,
+    "runwayDays": 6,
+    "safeUntilDate": "2026-06-28",
+    "projectedBalanceAfterPayments": 8500,
+    "monthlyBurnRate": 198000
   },
   "brief": {
-    "status": "SAFE",
-    "score": 100,
-    "gapToSafety": 0,
+    "status": "DANGER",
+    "score": 24,
+    "gapToSafety": 41500,
     "gapWorkDays": 0,
-    "runwayDays": 112,
-    "safeUntilDate": "2026-10-05",
-    "gapMessage": "今のペースなら問題ありません",
-    "workDaysMessage": "追加稼働は不要です",
+    "runwayDays": 6,
+    "safeUntilDate": "2026-06-28",
+    "gapMessage": "あと ¥41,500 で最低ラインです",
+    "workDaysMessage": "給料日前後は新規の出費を控えてください",
     "primaryAction": {
       "priority": 1,
-      "id": "cancel-sub-dropbox",
-      "title": "Dropbox Professional を解約（年間 ¥23,760 削減）",
-      "impactYen": 23760,
-      "impactPeriod": "yearly",
-      "category": "subscription",
-      "templateReason": "過去90日間の利用実績がありません（最終利用: 120日前）"
+      "id": "revo-extra-payment",
+      "title": "カードリボの返済を月 ¥5,000 増やす",
+      "impactYen": 5000,
+      "impactPeriod": "monthly",
+      "category": "debt",
+      "templateReason": "残高 ¥48万・金利15% — 最低返済のままだと減りません"
     },
     "priorityActions": [
       {
         "priority": 1,
-        "id": "cancel-sub-dropbox",
-        "title": "Dropbox Professional を解約（年間 ¥23,760 削減）",
-        "impactYen": 23760,
-        "impactPeriod": "yearly",
-        "category": "subscription",
-        "templateReason": "過去90日間の利用実績がありません（最終利用: 120日前）"
+        "id": "revo-extra-payment",
+        "title": "カードリボの返済を月 ¥5,000 増やす",
+        "impactYen": 5000,
+        "impactPeriod": "monthly",
+        "category": "debt",
+        "templateReason": "残高 ¥48万・金利15% — 最低返済のままだと減りません",
+        "expectedEffect": "利息の増え方を抑え、Runwayを延ばす"
       },
       {
         "priority": 2,
         "id": "subscription-cleanup",
-        "title": "サブスク整理（月 ¥12,860 改善）",
-        "impactYen": 12860,
+        "title": "Netflix・Spotify を解約（月 ¥2,470 削減）",
+        "impactYen": 2470,
         "impactPeriod": "monthly",
         "category": "subscription",
-        "templateReason": "3 件の解約候補を検出"
+        "templateReason": "生活必需品ではないサブスクを2件検出",
+        "expectedEffect": "今月の現金不足を少し埋める"
       },
       {
         "priority": 3,
-        "id": "tax-reserve",
-        "title": "税金積立 ¥125,000 を開始",
-        "impactYen": 125000,
+        "id": "cut-variable-spend",
+        "title": "来週の食費・外食を ¥3,000 抑える",
+        "impactYen": 3000,
         "impactPeriod": "monthly",
-        "category": "tax",
-        "templateReason": "今月収入の10%を納税準備口座へ"
+        "category": "expense",
+        "templateReason": "給料日まであと3日 — 現金が足りない見込み",
+        "expectedEffect": "口座残高の底割りを防ぐ"
       }
     ],
     "subscriptionOptimization": {
-      "monthlySavingPotential": 12860,
-      "yearlySavingPotential": 154320,
+      "monthlySubsTotal": 2870,
+      "monthlySavingPotential": 2470,
+      "yearlySavingPotential": 29640,
       "candidates": [
         {
-          "subscriptionId": "sub-dropbox",
-          "name": "Dropbox Professional",
-          "monthlyCost": 1980,
-          "yearlySaving": 23760,
-          "reason": "過去90日間の利用実績がありません（最終利用: 120日前）",
+          "subscriptionId": "sub-netflix",
+          "name": "Netflix",
+          "monthlyCost": 1490,
+          "yearlySaving": 17880,
+          "reason": "今月の視聴は2時間のみ — 解約しても生活に影響小",
           "priority": 1
         },
         {
-          "subscriptionId": "sub-adobe",
-          "name": "Adobe Creative Cloud",
-          "monthlyCost": 7780,
-          "yearlySaving": 93360,
-          "reason": "利用頻度が低いです（利用率 15%）。代替ツールで代替可能",
-          "priority": 2
-        },
-        {
-          "subscriptionId": "sub-zoom",
-          "name": "Zoom Pro",
-          "monthlyCost": 2100,
-          "yearlySaving": 25200,
-          "reason": "利用頻度が低いです（利用率 24%）。代替ツールで代替可能",
+          "subscriptionId": "sub-spotify",
+          "name": "Spotify",
+          "monthlyCost": 980,
+          "yearlySaving": 11760,
+          "reason": "無料プランで代替可能",
           "priority": 2
         }
       ],
-      "duplicateCategories": ["design"]
+      "keepRecommendations": [
+        { "name": "iCloud+ 200GB", "reason": "写真・書類のバックアップ用 — 月¥400のみ" }
+      ]
     },
     "calendarMarkers": [
-      { "date": "2026-06-17", "type": "work_recommended", "label": "FleetMetric: 余裕あり — 休暇可" },
-      { "date": "2026-06-20", "type": "bill", "label": "オフィス家賃 ¥88,000", "countdownDays": 5, "amount": 88000 },
-      { "date": "2026-06-25", "type": "bill", "label": "ビジネスカード引落 ¥125,000", "countdownDays": 10, "amount": 125000 }
+      { "date": "2026-06-22", "type": "danger", "label": "残高 ¥8,500 — 要注意", "countdownDays": 0, "amount": 8500 },
+      { "date": "2026-06-25", "type": "income", "label": "給与入金 ¥185,000", "countdownDays": 3, "amount": 185000 },
+      { "date": "2026-06-26", "type": "bill", "label": "車ローン ¥15,000", "countdownDays": 4, "amount": 15000 },
+      { "date": "2026-06-28", "type": "danger", "label": "カード引落（リボ）¥28,000", "countdownDays": 6, "amount": 28000 }
     ],
-    "paymentWarnings": [],
-    "nextBigPayment": { "name": "ビジネスカード引落", "daysUntil": 10, "amount": 125000 }
+    "paymentWarnings": [
+      { "message": "リボ残高が先月より ¥12,000 増加", "severity": "high" }
+    ],
+    "nextBigPayment": { "name": "カード引落（リボ）", "daysUntil": 6, "amount": 28000 }
   },
   "kpis": {
-    "projectedIncome": 1250000,
+    "projectedIncome": 185000,
     "projectedIncomePeriod": "monthly",
-    "confirmedExpenses": 420000,
+    "confirmedExpenses": 198000,
     "confirmedExpensesPeriod": "monthly",
-    "projectedBalance": 1429220,
+    "projectedBalance": 8500,
     "projectedBalancePeriod": "balance"
   },
   "fleetMetric": {
     "lastSync": "2026-06-15T22:34:00",
-    "syncCount": 12,
+    "syncCount": 1,
     "status": "normal",
-    "syncMethod": "CSV",
-    "monthlyRevenueSynced": 1250000,
+    "syncMethod": "給与明細",
+    "monthlyRevenueSynced": 185000,
     "recommendedWorkDays": 0
   },
   "surplus": {
-    "amount": 320000,
+    "amount": 0,
     "amountPeriod": "balance",
-    "investmentCandidate": 150000,
+    "investmentCandidate": 0,
     "investmentCandidatePeriod": "monthly",
-    "taxReserveSuggested": 125000,
+    "taxReserveSuggested": 0,
     "taxReserveSuggestedPeriod": "monthly",
-    "aiDevBudgetSuggested": 50000,
+    "aiDevBudgetSuggested": 0,
     "aiDevBudgetSuggestedPeriod": "monthly"
   },
   "simulations": [
     {
-      "id": "cancel-dropbox",
-      "title": "Dropbox Professional を解約した場合",
-      "impacts": ["年間改善: ¥23,760", "Runway: 112日 → 118日"]
+      "id": "revo-extra-5k",
+      "title": "リボ返済を月 ¥5,000 増やした場合",
+      "impacts": ["利息の増加を抑制", "Runway: 6日 → 11日", "完済までの期間が短縮"]
     },
     {
-      "id": "work-2days",
-      "title": "あと2日稼働した場合（FleetMetric Pro）",
-      "impacts": ["Safety: 100 → 100（維持）", "Runway: 112日 → 125日"]
+      "id": "cancel-streaming",
+      "title": "Netflix・Spotify を解約した場合",
+      "impacts": ["月 ¥2,470 削減", "Runway: 6日 → 8日", "来月の引落負担が軽くなる"]
     },
     {
-      "id": "tax-10pct",
-      "title": "税金積立を月10%に変更した場合",
-      "impacts": ["年末不足リスク: -35%", "Runway: 112日 → 108日"]
+      "id": "cut-food-10k",
+      "title": "来月の食費・外食を ¥10,000 抑えた場合",
+      "impacts": ["現金不足を回避", "Runway: 6日 → 9日", "リボへの回しが減る"]
     }
   ],
   "copy": {
-    "adviceText": "今のペースなら問題ありません。余剰 ¥320,000 を税金積立・AI開発予算に回せます。",
+    "adviceText": "貯金はほぼありません。リボ残高 ¥48万の利息が毎月の負けです。まず最低返済から少しでも増やすのが近道です。",
     "priorityActionsText": [
-      "Dropbox Professional を解約（年間 ¥23,760 削減）",
-      "サブスク整理（月 ¥12,860 改善）",
-      "税金積立 ¥125,000 を開始"
+      "カードリボの返済を月 ¥5,000 増やす",
+      "Netflix・Spotify を解約（月 ¥2,470 削減）",
+      "来週の食費・外食を ¥3,000 抑える"
     ],
-    "subscriptionComment": "Dropbox Professional 解約で年間 ¥23,760 削減可能",
+    "subscriptionComment": "車ローン ¥15,000/月は維持が必要。削れるのはサブスクから",
     "usedFallback": true
   }
 }

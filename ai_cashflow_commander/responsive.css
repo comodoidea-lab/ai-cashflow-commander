@@ -115,12 +115,20 @@
   min-width: 56px;
 }
 
-.acc-mobile-nav a.active {
-  color: #091426;
-  background: #d0e1fb55;
-  border-radius: 999px;
-  padding: 4px 10px;
-}
+  .acc-mobile-nav a.active {
+    color: #091426;
+    background: #d0e1fb55;
+    border-radius: 999px;
+    padding: 4px 10px;
+  }
+
+  .acc-mobile-nav-hint {
+    display: none;
+  }
+
+  .acc-sidebar-primary-nav {
+    display: block;
+  }
 
 .acc-menu-btn {
   display: none;
@@ -138,6 +146,171 @@
 .acc-break-words {
   overflow-wrap: anywhere;
   word-break: normal;
+}
+
+.acc-display-menu {
+  position: relative;
+}
+
+.acc-display-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border-radius: 9999px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #505f76;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.acc-display-menu-trigger:hover {
+  color: #091426;
+  border-color: rgba(9, 20, 38, 0.2);
+}
+
+.acc-display-menu-icon,
+.acc-display-menu-chevron {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.acc-display-menu-chevron {
+  font-size: 14px;
+}
+
+.acc-display-menu-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 50;
+  min-width: 196px;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+}
+
+.acc-display-menu-heading {
+  margin: 0;
+  padding: 4px 10px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #75777d;
+}
+
+.acc-display-menu-heading-divider {
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.acc-display-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #191c1e;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.acc-display-menu-item .material-symbols-outlined {
+  font-size: 18px;
+  color: #75777d;
+}
+
+.acc-display-menu-item:hover {
+  background: #f3f4f6;
+}
+
+.acc-display-menu-item.is-active {
+  background: #edeef0;
+  color: #091426;
+}
+
+.acc-display-menu-item.is-active .material-symbols-outlined {
+  color: #091426;
+}
+
+body.acc-gentle [data-acc-harsh="true"] {
+  display: none !important;
+}
+
+body.acc-gentle [data-acc="gap-banner"],
+body.acc-gentle [data-acc="gap-priority"] {
+  display: none !important;
+}
+
+body.acc-easy [data-acc-verbose="true"] {
+  display: none !important;
+}
+
+.acc-details-panel {
+  margin-top: 8px;
+}
+
+.acc-details-summary {
+  list-style: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: #505f76;
+  padding: 12px 16px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+}
+
+.acc-details-summary::-webkit-details-marker {
+  display: none;
+}
+
+.acc-details-panel[open] .acc-details-summary {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-bottom-color: transparent;
+}
+
+.acc-details-body {
+  padding: 12px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+}
+
+body:not(.acc-easy) .acc-page-details > .acc-details-summary {
+  display: none;
+}
+
+body:not(.acc-easy) .acc-page-details > .acc-details-body {
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+
+body.acc-easy .acc-page-header [data-acc-verbose="true"] {
+  display: none !important;
+}
+
+body.acc-easy .acc-page-header {
+  margin-bottom: 12px;
+}
+
+body.acc-easy .text-headline-md {
+  line-height: 1.25 !important;
 }
 
 /* Tablet: 768–1279 */
@@ -231,6 +404,24 @@
 
   .acc-mobile-nav {
     display: flex;
+  }
+
+  .acc-sidebar-primary-nav {
+    display: none;
+  }
+
+  .acc-mobile-nav-hint {
+    display: block;
+  }
+
+  .acc-sidebar:not(.is-open) {
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .acc-sidebar.is-open {
+    visibility: visible;
+    pointer-events: auto;
   }
 
   .acc-page-header {

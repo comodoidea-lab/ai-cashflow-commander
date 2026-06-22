@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { join, extname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -14,14 +14,16 @@ const MIME = {
   ".png": "image/png",
 };
 
-let dashboardCache = null;
+let dashboardCache = { mtimeMs: 0, data: null };
 
 async function getDashboard() {
-  if (!dashboardCache) {
-    const raw = await readFile(join(ROOT, "ai_cashflow_commander/fallback-dashboard.json"), "utf8");
-    dashboardCache = JSON.parse(raw);
+  const jsonPath = join(ROOT, "ai_cashflow_commander/fallback-dashboard.json");
+  const st = await stat(jsonPath);
+  if (!dashboardCache.data || st.mtimeMs !== dashboardCache.mtimeMs) {
+    const raw = await readFile(jsonPath, "utf8");
+    dashboardCache = { mtimeMs: st.mtimeMs, data: JSON.parse(raw) };
   }
-  return dashboardCache;
+  return dashboardCache.data;
 }
 
 function cors(res) {

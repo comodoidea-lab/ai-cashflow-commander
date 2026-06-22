@@ -209,6 +209,7 @@
 
   root.innerHTML = AccApi.renderDashboardContent(data, true);
   AccApi.initSurplusBrief(root);
+  AccApi.bindDashboardCtas(data, root);
   AccApi.bindTapScale();
 })();
 </script>

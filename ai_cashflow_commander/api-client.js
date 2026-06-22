@@ -27,6 +27,13 @@
       bar: "bg-status-danger",
       icon: "error",
     },
+    GENTLE: {
+      text: "text-secondary",
+      bg: "bg-surface-container",
+      border: "border-border-subtle",
+      bar: "bg-secondary/40",
+      icon: "self_improvement",
+    },
   };
 
   const MARKER_COLORS = {
@@ -98,24 +105,24 @@
     let status = "安定";
     let tone = STATUS_STYLE.SAFE;
     let icon = "check_circle";
-    let summary = "収入が支出を上回り、月末残高も安全ラインを上回る見込みです。";
-    let helper = "まずはこの収支と残高の関係だけ確認すれば十分です。";
+    let summary = "収支・残高ともに安全圏内です。";
+    let helper = "収支と残高だけ見ればOKです。";
 
     if (reserveGap < 0 || flow.projectedBalance < 0) {
       status = "不足";
       tone = STATUS_STYLE.DANGER;
       icon = "error";
-      summary = "月末残高が安全ラインを下回る見込みです。";
-      helper = "追加収入または支出調整が必要です。";
+      summary = "今月はお金が足りない見込みです。";
+      helper = "まずリボと固定費から見直しましょう。";
     } else if (incomeExpenseDelta < 0) {
       status = "注意";
       tone = STATUS_STYLE.CAUTION;
       icon = "warning";
-      summary = "月末残高は残りますが、今月の支出が収入を上回る見込みです。";
-      helper = "まずは支出超過が一時的なものかを確認してください。";
+      summary = "支出が収入を上回る見込みです。";
+      helper = "サブスクと食費から削れます。";
     }
 
-    return {
+    return softenBalanceStatus({
       ...flow,
       openingBalance,
       incomeExpenseDelta,
@@ -125,7 +132,433 @@
       icon,
       summary,
       helper,
+    });
+  }
+
+  function isGentleTone() {
+    return typeof document !== "undefined" && document.body?.classList.contains("acc-gentle");
+  }
+
+  function softenBalanceStatus(flow) {
+    if (!isGentleTone()) return flow;
+    const soft = { ...flow, gentle: true };
+    if (flow.reserveGap < 0 || flow.projectedBalance < 0) {
+      soft.status = "今月";
+      soft.tone = STATUS_STYLE.GENTLE;
+      soft.icon = "self_improvement";
+      soft.summary = "きつい時期です。無理せず、今日ひとつだけ進めましょう。";
+      soft.helper = "数字の詳細は「くわしく見る」から、気になるときだけ開けます。";
+    } else if (flow.incomeExpenseDelta < 0) {
+      soft.status = "見直し";
+      soft.tone = STATUS_STYLE.GENTLE;
+      soft.icon = "self_improvement";
+      soft.summary = "支出がやや多めの見込みです。";
+      soft.helper = "小さな変更から始められます。";
+    }
+    return soft;
+  }
+
+  function gentleDetailsSummary(defaultLabel) {
+    return isGentleTone() ? "くわしく見る（気になるときだけ）" : defaultLabel;
+  }
+
+  function primaryActionLabel() {
+    return isGentleTone() ? "今日の一歩" : "いまやること";
+  }
+
+  function getPrimaryNextAction(data) {
+    const actions = data.brief?.priorityActions || [];
+    return actions[0] || data.brief?.primaryAction || null;
+  }
+
+  function shortenActionTitle(title) {
+    return (title || "").replace(/（[^）]*）/g, "").trim();
+  }
+
+  function isEasyMode() {
+    return typeof document !== "undefined" && document.body?.classList.contains("acc-easy");
+  }
+
+  function resolveActionCtaKey(action) {
+    if (!action) return "primary-action";
+    if (action.id === "tax-reserve") return "tax-reserve";
+    if (action.id === "ai-dev-budget") return "ai-dev-budget";
+    return "primary-action";
+  }
+
+  /** かんたん表示 — 状態 + 次の1アクション */
+  function renderSafetyHeroEasy(data) {
+    const flow = getBalanceStatusContext(data);
+    const action = getPrimaryNextAction(data);
+    const s = flow.tone;
+    const nextLine = action
+      ? `次: ${shortenActionTitle(action.title)}`
+      : flow.helper;
+
+    return `
+      <section class="rounded-xl card-shadow border-2 ${s.border} bg-surface-white overflow-hidden mb-md" data-acc="safety-hero">
+        <div class="h-1.5 ${s.bar} w-full"></div>
+        <div class="p-lg">
+          <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-md">
+            <div class="min-w-0">
+              <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full ${s.bg} ${s.text} text-lg font-bold mb-sm">
+                <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1">${flow.icon}</span>
+                ${flow.status}
+              </span>
+              <h3 class="font-headline-md text-headline-md text-primary font-bold acc-break-words">${flow.summary}</h3>
+              <p class="text-sm font-semibold text-primary mt-sm acc-break-words">${nextLine}</p>
+            </div>
+            <div class="shrink-0 sm:text-right" data-acc-harsh="true">
+              <p class="text-[10px] text-secondary uppercase">月末残高</p>
+              <p class="text-3xl font-bold text-primary">${formatYen(flow.projectedBalance)}</p>
+            </div>
+          </div>
+        </div>
+      </section>`;
+  }
+
+  function renderSecondaryKpisEasy(data) {
+    const k = data.kpis;
+    const flow = getBalanceStatusContext(data);
+    const card = (label, value, tone) => `
+      <div class="bg-surface-white rounded-xl p-md text-center card-shadow border border-border-subtle">
+        <p class="text-[10px] text-secondary mb-1">${label}</p>
+        <p class="text-lg font-bold ${tone || "text-primary"}">${value}</p>
+      </div>`;
+
+    const gentle = isGentleTone();
+    const balanceCard = gentle
+      ? ""
+      : card("残高", formatYen(k.projectedBalance), flow.reserveGap >= 0 ? "text-status-safe" : "text-status-danger");
+
+    return `
+      <div class="grid grid-cols-${gentle ? "2" : "3"} gap-sm mb-md" data-acc="kpis-easy">
+        ${card("収入", formatYen(k.projectedIncome))}
+        ${card("支出", formatYen(k.confirmedExpenses), gentle ? "text-primary" : "text-status-caution")}
+        ${balanceCard}
+      </div>`;
+  }
+
+  function renderPrimaryActionCard(data) {
+    const action = getPrimaryNextAction(data);
+    if (!action) return "";
+
+    const impact = resolveActionImpactDisplay(action, data);
+    const href = actionDetailHref(action);
+    const ctaKey = resolveActionCtaKey(action);
+    const title = shortenActionTitle(action.title);
+
+    const cta = href
+      ? `<a href="${href}" class="inline-flex items-center justify-center gap-sm mt-md bg-white text-primary px-lg py-sm rounded-xl font-bold tap-scale">進む</a>`
+      : `<button type="button" data-acc-cta="${ctaKey}" class="inline-flex items-center justify-center gap-sm mt-md bg-white text-primary px-lg py-sm rounded-xl font-bold tap-scale">結果を見る</button>`;
+
+    return `
+      <section class="bg-primary-container text-white rounded-xl p-lg mb-md card-shadow" data-acc="primary-action-card">
+        <p class="text-[10px] uppercase tracking-wider text-on-primary-container">${primaryActionLabel()}</p>
+        <p class="text-xl font-bold mt-1 acc-break-words">${title}</p>
+        ${impact.amount > 0 ? `<p class="text-2xl font-bold mt-2" data-acc-harsh="true">${formatMoneyWithPeriod(impact.amount, impact.period)}</p>` : ""}
+        ${cta}
+      </section>`;
+  }
+
+  function renderDashboardDetails(data) {
+    const monthRef = (data.asOfMonth || "2026-06") + "-15";
+    return `
+      <details class="acc-details-panel">
+        <summary class="acc-details-summary">${gentleDetailsSummary("くわしく見る（計算・配分・予定）")}</summary>
+        <div class="acc-details-body">
+          ${renderBalanceBridge(data)}
+          ${renderSurplusBrief(data)}
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-xl mt-md">
+            <div class="lg:col-span-2 bg-surface-white rounded-xl card-shadow p-lg">${renderActionCalendar(data, monthRef)}</div>
+            <div class="bg-surface-white rounded-xl card-shadow p-lg">${renderTopActions(data)}</div>
+          </div>
+        </div>
+      </details>`;
+  }
+
+  function renderDashboardEasy(data) {
+    return (
+      renderSafetyHeroEasy(data) +
+      renderSecondaryKpisEasy(data) +
+      renderPrimaryActionCard(data) +
+      renderDashboardDetails(data)
+    );
+  }
+
+  function remountDashboard(root, data) {
+    if (!root) return;
+    root.innerHTML = renderDashboardContent(data, false);
+    initSurplusBrief(root);
+    bindDashboardCtas(data, root);
+    bindTapScale();
+  }
+
+  function syncPageDetailsPanel(id, easy) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (easy) el.removeAttribute("open");
+    else el.setAttribute("open", "");
+  }
+
+  function renderSubscriptionsEasy(data) {
+    const opt = data.brief?.subscriptionOptimization;
+    if (!opt) return "";
+    const monthlyTotal = opt.monthlySubsTotal || 2870;
+    const top = opt.candidates[0];
+    const gentle = isGentleTone();
+    const count = opt.candidates.length;
+    const summary = gentle
+      ? count > 0
+        ? "見直せそうなサブスクがあります。"
+        : "大きな削減候補はありません。"
+      : count > 0
+        ? `解約候補が ${count}件あります。`
+        : "大きな削減候補はありません。";
+    const nextLine = top
+      ? gentle
+        ? `候補: ${shortenActionTitle(top.name)}`
+        : `次: ${shortenActionTitle(top.name)} を解約`
+      : "このまま維持でOKです。";
+
+    return `
+      <section class="rounded-xl card-shadow border-2 border-status-caution bg-surface-white overflow-hidden mb-md" data-acc="subs-easy-hero">
+        <div class="h-1.5 ${gentle ? "bg-secondary/40" : "bg-status-caution"} w-full"></div>
+        <div class="p-lg">
+          <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-md">
+            <div class="min-w-0">
+              <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-status-caution/10 text-status-caution text-lg font-bold mb-sm">
+                <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1">subscriptions</span>
+                見直し
+              </span>
+              <h3 class="font-headline-md text-headline-md text-primary font-bold acc-break-words">${summary}</h3>
+              <p class="text-sm font-semibold text-primary mt-sm acc-break-words">${nextLine}</p>
+            </div>
+            <div class="shrink-0 sm:text-right" data-acc-harsh="true">
+              <p class="text-[10px] text-secondary uppercase">月額合計</p>
+              <p class="text-3xl font-bold text-primary">${formatYen(monthlyTotal)}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+      ${gentle ? "" : `
+      <div class="grid grid-cols-3 gap-sm mb-md" data-acc="subs-kpis-easy">
+        <div class="bg-surface-white rounded-xl p-md text-center card-shadow border border-border-subtle">
+          <p class="text-[10px] text-secondary mb-1">月額</p>
+          <p class="text-lg font-bold text-primary">${formatYen(monthlyTotal)}</p>
+        </div>
+        <div class="bg-surface-white rounded-xl p-md text-center card-shadow border border-border-subtle">
+          <p class="text-[10px] text-secondary mb-1">削減/月</p>
+          <p class="text-lg font-bold text-status-caution">${formatYen(opt.monthlySavingPotential)}</p>
+        </div>
+        <div class="bg-surface-white rounded-xl p-md text-center card-shadow border border-border-subtle">
+          <p class="text-[10px] text-secondary mb-1">削減/年</p>
+          <p class="text-lg font-bold text-status-safe">${formatYen(opt.yearlySavingPotential)}</p>
+        </div>
+      </div>`}
+      ${top ? `
+      <section class="bg-primary-container text-white rounded-xl p-lg mb-md card-shadow" data-acc="subs-primary-action">
+        <p class="text-[10px] uppercase tracking-wider text-on-primary-container">${primaryActionLabel()}</p>
+        <p class="text-xl font-bold mt-1 acc-break-words">${gentle ? shortenActionTitle(top.name) : `${shortenActionTitle(top.name)} を解約`}</p>
+        <p class="text-2xl font-bold mt-2" data-acc-harsh="true">${formatYen(top.yearlySaving)}/年</p>
+        <button type="button" data-acc-subs-cta="audit-report" class="inline-flex items-center justify-center gap-sm mt-md bg-white text-primary px-lg py-sm rounded-xl font-bold tap-scale">内容を見る</button>
+      </section>` : ""}`;
+  }
+
+  function renderCashflowEasy(data) {
+    const k = data.kpis || {};
+    const pending = 3;
+    return `
+      <section class="rounded-xl card-shadow border-2 border-status-safe bg-surface-white overflow-hidden mb-md" data-acc="cashflow-easy-hero">
+        <div class="h-1.5 bg-status-safe w-full"></div>
+        <div class="p-lg">
+          <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-md">
+            <div class="min-w-0">
+              <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-status-safe/10 text-status-safe text-lg font-bold mb-sm">
+                <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1">pending_actions</span>
+                承認待ち ${pending}件
+              </span>
+              <h3 class="font-headline-md text-headline-md text-primary font-bold acc-break-words">明細を取り込めば自動分類されます。</h3>
+              <p class="text-sm font-semibold text-primary mt-sm acc-break-words">次: 銀行明細CSVを取り込む</p>
+            </div>
+          </div>
+        </div>
+      </section>
+      <div class="grid grid-cols-3 gap-sm mb-md" data-acc="cashflow-kpis-easy">
+        <div class="bg-surface-white rounded-xl p-md text-center card-shadow border border-border-subtle">
+          <p class="text-[10px] text-secondary mb-1">収入</p>
+          <p class="text-lg font-bold text-primary">${formatYen(k.projectedIncome || 0)}</p>
+        </div>
+        <div class="bg-surface-white rounded-xl p-md text-center card-shadow border border-border-subtle">
+          <p class="text-[10px] text-secondary mb-1">支出</p>
+          <p class="text-lg font-bold text-status-caution">${formatYen(k.confirmedExpenses || 0)}</p>
+        </div>
+        <div class="bg-surface-white rounded-xl p-md text-center card-shadow border border-border-subtle">
+          <p class="text-[10px] text-secondary mb-1">承認待ち</p>
+          <p class="text-lg font-bold text-status-safe">${pending}件</p>
+        </div>
+      </div>`;
+  }
+
+  function updateSubscriptionsPanels(data, result) {
+    const opt = data.brief?.subscriptionOptimization;
+    if (!opt) return;
+
+    const optPanel = document.getElementById("acc-opt-panel");
+    if (optPanel) optPanel.innerHTML = renderOptimizationPanel(data);
+
+    const savings = document.getElementById("acc-footer-savings");
+    if (savings) savings.textContent = `${formatYen(opt.yearlySavingPotential)} /yr`;
+
+    const monthlyHeader = document.getElementById("acc-subs-monthly-total");
+    if (monthlyHeader) monthlyHeader.textContent = formatYen(opt.monthlySubsTotal || 2870);
+
+    const top = opt.candidates[0];
+    const audit = document.getElementById("acc-audit-text");
+    if (audit) {
+      audit.innerHTML = top
+        ? `<strong class="text-white">${opt.candidates.length}件</strong>の解約候補を検出。` +
+          `<strong class="text-white">${top.name}</strong>を解約すると年間 <strong class="text-white">${formatYen(top.yearlySaving)}</strong> 削減。`
+        : "解約候補はありません。";
+    }
+
+    const api = document.getElementById("acc-api-status");
+    if (api && result) api.innerHTML = renderApiStatus(result);
+  }
+
+  function remountSubscriptions(data, result) {
+    const easy = document.getElementById("acc-subs-easy");
+    const easyOn = isEasyMode();
+    if (easy) {
+      easy.innerHTML = easyOn ? renderSubscriptionsEasy(data) : "";
+      easy.style.display = easyOn ? "" : "none";
+    }
+    syncPageDetailsPanel("acc-subs-details", easyOn);
+    updateSubscriptionsPanels(data, result);
+    bindSubscriptionsCtas(data);
+  }
+
+  function remountCashflow(data, dashResult, csvResult) {
+    const easy = document.getElementById("acc-cashflow-easy");
+    const easyOn = isEasyMode();
+    if (easy) {
+      easy.innerHTML = easyOn ? renderCashflowEasy(data) : "";
+      easy.style.display = easyOn ? "" : "none";
+    }
+    syncPageDetailsPanel("acc-cashflow-details", easyOn);
+
+    const apiPanel = document.getElementById("acc-import-api-panel");
+    if (apiPanel) apiPanel.innerHTML = renderImportApiPanel(data, dashResult, csvResult);
+
+    const fm = document.getElementById("acc-fleetmetric-sync-root");
+    if (fm) fm.innerHTML = renderFleetMetricSyncPanel(data, dashResult);
+
+    bindCashflowImportTabs(document);
+  }
+
+  function getPrimarySimulation(data) {
+    const sims = data.simulations || FALLBACK_DASHBOARD.simulations || [];
+    return sims[0] || null;
+  }
+
+  function renderInsightsEasy(data) {
+    const m = data.metrics || {};
+    const sims = data.simulations || FALLBACK_DASHBOARD.simulations || [];
+    const sim = getPrimarySimulation(data);
+    const impacts = sim?.impacts || [];
+    const gentle = isGentleTone();
+    const summary = gentle
+      ? "先の見通しを、無理のない範囲で確認できます。"
+      : m.status === "SAFE"
+        ? "今の資金状態は安定です。"
+        : "資金状態に注意が必要です。";
+    const nextLine = sim
+      ? gentle
+        ? `例: ${shortenActionTitle(sim.title)}`
+        : `次: ${shortenActionTitle(sim.title)}`
+      : "試算できるシナリオがありません。";
+    const primaryImpact = impacts[0] || "";
+
+    return `
+      <section class="rounded-xl card-shadow border-2 ${gentle ? "border-border-subtle" : "border-status-safe"} bg-surface-white overflow-hidden mb-md" data-acc="insights-easy-hero">
+        <div class="h-1.5 ${gentle ? "bg-secondary/40" : "bg-status-safe"} w-full"></div>
+        <div class="p-lg">
+          <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-md">
+            <div class="min-w-0">
+              <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full ${gentle ? "bg-surface-container text-secondary" : "bg-status-safe/10 text-status-safe"} text-lg font-bold mb-sm">
+                <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1">psychology</span>
+                ${gentle ? "試算" : `${m.status || "SAFE"} ${m.score || 0}`}
+              </span>
+              <h3 class="font-headline-md text-headline-md text-primary font-bold acc-break-words">${summary}</h3>
+              <p class="text-sm font-semibold text-primary mt-sm acc-break-words">${nextLine}</p>
+            </div>
+            <div class="shrink-0 sm:text-right" data-acc-harsh="true">
+              <p class="text-[10px] text-secondary uppercase">Runway</p>
+              <p class="text-3xl font-bold text-primary">${m.runwayDays || 0}日</p>
+            </div>
+          </div>
+        </div>
+      </section>
+      ${gentle ? "" : `
+      <div class="grid grid-cols-3 gap-sm mb-md" data-acc="insights-kpis-easy">
+        <div class="bg-surface-white rounded-xl p-md text-center card-shadow border border-border-subtle">
+          <p class="text-[10px] text-secondary mb-1">安全度</p>
+          <p class="text-lg font-bold text-primary">${m.score || 0}</p>
+        </div>
+        <div class="bg-surface-white rounded-xl p-md text-center card-shadow border border-border-subtle">
+          <p class="text-[10px] text-secondary mb-1">Runway</p>
+          <p class="text-lg font-bold text-status-safe">${m.runwayDays || 0}日</p>
+        </div>
+        <div class="bg-surface-white rounded-xl p-md text-center card-shadow border border-border-subtle">
+          <p class="text-[10px] text-secondary mb-1">試算</p>
+          <p class="text-lg font-bold text-primary">${sims.length}件</p>
+        </div>
+      </div>`}
+      ${sim ? `
+      <section class="bg-primary-container text-white rounded-xl p-lg mb-md card-shadow" data-acc="insights-primary-action">
+        <p class="text-[10px] uppercase tracking-wider text-on-primary-container">${gentle ? "試してみる" : "いま試すこと"}</p>
+        <p class="text-xl font-bold mt-1 acc-break-words">${shortenActionTitle(sim.title)}</p>
+        ${primaryImpact ? `<p class="text-lg font-bold mt-2 text-status-safe">${primaryImpact}</p>` : ""}
+        <button type="button" data-acc-insights-cta="preview" data-acc-insights-id="${sim.id || "primary"}" class="inline-flex items-center justify-center gap-sm mt-md bg-white text-primary px-lg py-sm rounded-xl font-bold tap-scale">結果を見る</button>
+      </section>` : ""}`;
+  }
+
+  function bindInsightsCtas(data, root = document) {
+    const scope = root.querySelector ? root : document;
+    const sims = data.simulations || FALLBACK_DASHBOARD.simulations || [];
+    const openPreview = (sim) => {
+      if (!sim) return;
+      showAccPreviewModal(
+        `${shortenActionTitle(sim.title)}（プレビュー）`,
+        sim.impacts || [sim.summary || "finance-core による What-if 試算"],
+        "モック段階のシミュレーション結果です。実際の数値変更は未反映です。",
+      );
     };
+
+    scope.querySelectorAll("[data-acc-insights-cta]").forEach((btn) => {
+      const id = btn.getAttribute("data-acc-insights-id");
+      const sim = sims.find((s) => s.id === id) || getPrimarySimulation(data);
+      btn.onclick = () => openPreview(sim);
+    });
+  }
+
+  function remountInsights(data, result) {
+    const easy = document.getElementById("acc-insights-easy");
+    const root = document.getElementById("acc-insights-root");
+    const easyOn = isEasyMode();
+
+    if (easy) {
+      easy.innerHTML = easyOn ? renderInsightsEasy(data) : "";
+      easy.style.display = easyOn ? "" : "none";
+    }
+    if (root) root.innerHTML = renderSimulationPanel(data);
+    syncPageDetailsPanel("acc-insights-details", easyOn);
+
+    const api = document.getElementById("acc-api-status");
+    if (api && result) api.innerHTML = renderApiStatus(result);
+
+    bindInsightsCtas(data);
+    bindTapScale();
   }
 
   function renderBalanceBridge(data) {
@@ -250,6 +683,8 @@
         label: "税金積立",
         value: taxReserve,
         detail: `今月収入の${flow.taxPct || 10}%を先に確保`,
+        effect: "年末納税不足リスクを低減",
+        cta: "tax-reserve",
         color: "bg-secondary",
         note: "この金額を税金用に確保したあとの手持ちです",
       },
@@ -259,6 +694,8 @@
         label: "事業投資・AI予算",
         value: aiBudget,
         detail: "余剰内で小さく試す",
+        effect: "ツール・API費を計画内に収める",
+        cta: "ai-dev-budget",
         color: "bg-primary",
         note: "この金額を事業投資に使ったあとの手持ちです",
       },
@@ -268,6 +705,8 @@
         label: "手元余力として残す",
         value: keepOnHand,
         detail: "安全ライン超過分の残り",
+        effect: "運転資金の余力を確保",
+        cta: null,
         color: "bg-status-safe",
         note: "この金額を確保したうえで、残りを別用途に回せます",
       },
@@ -310,11 +749,12 @@
                 const selected = item.id === defaultAllocation.id;
                 const selectedClass = selected ? "border-primary bg-primary/5 ring-2 ring-primary/10" : "border-border-subtle bg-surface-container-low";
                 return `
-            <button type="button" class="acc-surplus-option text-left rounded-xl border ${selectedClass} p-md transition-all hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/30" aria-pressed="${selected ? "true" : "false"}" data-surplus-option data-kind="${item.kind}" data-label="${item.label}" data-value="${item.value}" data-note="${item.note}">
+            <button type="button" class="acc-surplus-option text-left rounded-xl border ${selectedClass} p-md transition-all hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/30" aria-pressed="${selected ? "true" : "false"}" data-surplus-option data-kind="${item.kind}" data-label="${item.label}" data-value="${item.value}" data-note="${item.note}"${item.cta ? ` data-acc-cta="${item.cta}"` : ""}>
               <div class="flex items-start justify-between gap-md">
                 <div>
                   <p class="text-sm font-bold text-primary acc-break-words">${item.label}</p>
                   <p class="text-[11px] text-secondary mt-1 acc-break-words">${item.detail}</p>
+                  <p class="text-[11px] text-status-safe mt-1 acc-break-words">期待効果: ${item.effect}</p>
                 </div>
                 <span class="w-3 h-3 rounded-full ${item.color} shrink-0 mt-1"></span>
               </div>
@@ -339,6 +779,9 @@
           <p class="mt-md pt-md border-t border-border-subtle text-sm text-secondary acc-break-words" data-surplus-formula>
             ${formulaFor(defaultAllocation)}
           </p>
+          <div class="mt-md flex flex-wrap gap-md">
+            <button type="button" class="text-sm font-bold text-primary border border-primary/30 px-md py-sm rounded-xl tap-scale hover:bg-primary/5" data-surplus-preview>この配分の結果をプレビュー</button>
+          </div>
         </div>
       </section>`;
   }
@@ -362,6 +805,29 @@
     if (/月/.test(action.title || "")) return "monthly";
     if (action.category === "subscription") return "yearly";
     return "monthly";
+  }
+
+  function resolveExpectedEffect(action) {
+    if (action.expectedEffect) return action.expectedEffect;
+    const defaults = {
+      "cancel-sub-dropbox": "年間の固定費を削減",
+      "subscription-cleanup": "月間キャッシュフローを改善",
+      "tax-reserve": "年末納税不足リスクを低減",
+      "ai-dev-budget": "ツール・API費を計画内に収める",
+      "close-gap": "安全ライン到達までの不足を解消",
+      "collect-receivables": "未回収分のキャッシュを回収",
+    };
+    if (defaults[action.id]) return defaults[action.id];
+    if (action.category === "subscription") return "経費を削減して余裕を確保";
+    if (action.category === "tax") return "納税資金の不足を防ぐ";
+    if (action.category === "income") return "安全ラインまでの不足を埋める";
+    return "";
+  }
+
+  function actionDetailHref(action) {
+    if (action.category === "subscription") return "../_8/code.html";
+    if (action.category === "tax" || action.id === "ai-dev-budget") return null;
+    return null;
   }
 
   /** 収支→残高のつながり */
@@ -432,18 +898,37 @@
     }
   }
 
+  function getActivePersona() {
+    const scenario = getScenarioFromUrl();
+    return resolveScenarioData(scenario || "default");
+  }
+
   function enrichDashboard(data) {
+    const fb = getActivePersona();
+    const apiBrief = data.brief || {};
+    const fbBrief = fb.brief || {};
     return {
-      ...FALLBACK_DASHBOARD,
       ...data,
-      asOfMonth: data.asOfMonth || FALLBACK_DASHBOARD.asOfMonth,
-      safetyBufferTarget: data.safetyBufferTarget ?? FALLBACK_DASHBOARD.safetyBufferTarget,
-      metrics: { ...FALLBACK_DASHBOARD.metrics, ...data.metrics },
-      brief: { ...FALLBACK_DASHBOARD.brief, ...data.brief },
-      kpis: { ...FALLBACK_DASHBOARD.kpis, ...data.kpis },
-      fleetMetric: { ...FALLBACK_DASHBOARD.fleetMetric, ...(data.fleetMetric || {}) },
-      surplus: { ...FALLBACK_DASHBOARD.surplus, ...(data.surplus || {}) },
-      simulations: data.simulations || FALLBACK_DASHBOARD.simulations,
+      ...fb,
+      asOfMonth: fb.asOfMonth || data.asOfMonth,
+      safetyBufferTarget: fb.safetyBufferTarget ?? data.safetyBufferTarget,
+      revolvingDebt: fb.revolvingDebt || data.revolvingDebt,
+      metrics: { ...(data.metrics || {}), ...fb.metrics },
+      brief: {
+        ...apiBrief,
+        ...fbBrief,
+        subscriptionOptimization: {
+          ...(apiBrief.subscriptionOptimization || {}),
+          ...(fbBrief.subscriptionOptimization || {}),
+        },
+        priorityActions: fbBrief.priorityActions || apiBrief.priorityActions,
+        calendarMarkers: fbBrief.calendarMarkers || apiBrief.calendarMarkers,
+      },
+      kpis: { ...(data.kpis || {}), ...fb.kpis },
+      fleetMetric: { ...(data.fleetMetric || {}), ...fb.fleetMetric },
+      surplus: { ...(data.surplus || {}), ...fb.surplus },
+      simulations: fb.simulations || data.simulations,
+      copy: { ...(data.copy || {}), ...fb.copy },
     };
   }
 
@@ -480,7 +965,7 @@
             <span class="${s.text} font-bold">${flow.status}</span>
           </div>
           <p class="text-lg font-bold text-primary acc-break-words">${flow.summary}</p>
-          <p class="text-xs text-secondary mt-2 acc-break-words">月末残高は安全ラインを${balanceVsLine}見込みです。</p>
+          <p class="text-xs text-secondary mt-2 acc-break-words" data-acc-verbose="true">月末残高は安全ラインを${balanceVsLine}見込みです。</p>
         </section>`;
     }
 
@@ -499,13 +984,13 @@
                 <span class="text-sm text-secondary">収支と残高で判定</span>
               </div>
               <h3 class="font-headline-md text-headline-md text-primary font-bold acc-break-words">${flow.summary}</h3>
-              <p class="text-sm text-secondary mt-2 acc-break-words">${flow.helper}</p>
+              <p class="text-sm text-secondary mt-2 acc-break-words" data-acc-verbose="true">${flow.helper}</p>
             </div>
-            <div class="bg-surface-container-low rounded-xl p-md min-w-[260px] border border-border-subtle">
+            <div class="bg-surface-container-low rounded-xl p-md min-w-[260px] border border-border-subtle" data-acc-harsh="true">
               <p class="text-[10px] text-secondary uppercase mb-1">月末残高</p>
               <p class="text-3xl font-bold text-primary">${formatYen(flow.projectedBalance)}</p>
               <p class="text-xs ${s.text} font-semibold mt-2 acc-break-words">${balanceText}</p>
-              <p class="text-[10px] text-secondary mt-1 acc-break-words">安全ライン: ${formatYen(flow.safetyBufferTarget)}</p>
+              <p class="text-[10px] text-secondary mt-1 acc-break-words" data-acc-verbose="true">安全ライン: ${formatYen(flow.safetyBufferTarget)}</p>
             </div>
           </div>
         </div>
@@ -551,6 +1036,14 @@
 
     const primaryCta = isSafe ? "税金積立を開始" : "推奨アクションを実行";
     const secondaryCta = isSafe ? "AI開発予算を確保" : "詳細を見る";
+    const primaryCtaKey = isSafe ? "tax-reserve" : "primary-action";
+    const secondaryCtaKey = isSafe ? "ai-dev-budget" : "details";
+    const safeReasons = isSafe
+      ? `<div class="grid grid-cols-1 sm:grid-cols-2 gap-sm mb-lg text-sm">
+          <p class="text-on-primary-fixed/90 acc-break-words" data-acc-verbose="true"><span class="text-white font-semibold">税金積立:</span> 今月収入の10% → 年末不足リスクを低減</p>
+          <p class="text-on-primary-fixed/90 acc-break-words" data-acc-verbose="true"><span class="text-white font-semibold">AI開発予算:</span> 余剰から今月 ¥${(s.aiDevBudgetSuggested || 0).toLocaleString("ja-JP")} → ツール費を計画内に</p>
+        </div>`
+      : "";
 
     return `
       <section class="bg-primary-container text-on-primary rounded-xl p-lg mb-md relative overflow-hidden card-shadow" data-acc="commander-brief">
@@ -561,10 +1054,11 @@
             <span class="ml-auto text-[10px] uppercase tracking-wider bg-white/10 px-2 py-1 rounded-full">${copy.usedFallback ? "Rule-based" : "AI polished"}</span>
           </div>
           <p class="text-lg font-bold text-white mb-2 acc-break-words">${title}</p>
-          <p class="text-body-md text-on-primary-fixed leading-relaxed max-w-3xl mb-lg acc-break-words">${body}</p>
+          <p class="text-body-md text-on-primary-fixed leading-relaxed max-w-3xl mb-md acc-break-words" data-acc-verbose="true">${body}</p>
+          ${safeReasons}
           <div class="flex flex-wrap gap-md">
-            <button class="bg-on-secondary text-primary px-lg py-sm rounded-xl font-bold tap-scale hover:scale-[1.02] transition-all">${primaryCta}</button>
-            <button class="border border-on-primary-container text-white px-lg py-sm rounded-xl font-bold tap-scale hover:bg-primary/50 transition-all">${secondaryCta}</button>
+            <button type="button" data-acc-cta="${primaryCtaKey}" class="bg-on-secondary text-primary px-lg py-sm rounded-xl font-bold tap-scale hover:scale-[1.02] transition-all">${primaryCta}</button>
+            <button type="button" data-acc-cta="${secondaryCtaKey}" class="border border-on-primary-container text-white px-lg py-sm rounded-xl font-bold tap-scale hover:bg-primary/50 transition-all">${secondaryCta}</button>
           </div>
         </div>
       </section>`;
@@ -596,7 +1090,7 @@
       <div class="${card}">
         <p class="text-label-md text-secondary mb-1 uppercase text-[10px]">予測収入 <span class="normal-case">(${PERIOD_LABEL[incomePeriod]})</span></p>
         <p class="text-lg font-bold text-primary">${formatMoneyWithPeriod(k.projectedIncome, incomePeriod)}</p>
-        <p class="text-[10px] text-secondary mt-1 acc-break-words">FleetMetric Pro 同期</p>
+        <p class="text-[10px] text-secondary mt-1 acc-break-words" data-acc-verbose="true">FleetMetric Pro 同期</p>
       </div>
       <div class="${card.replace("border-primary", "border-status-caution")}">
         <p class="text-label-md text-secondary mb-1 uppercase text-[10px]">確定支出 <span class="normal-case">(${PERIOD_LABEL[expensePeriod]})</span></p>
@@ -605,7 +1099,7 @@
       <div class="${card.replace("border-primary", flow.incomeExpenseDelta >= 0 ? "border-status-safe" : "border-status-danger")}">
         <p class="text-label-md text-secondary mb-1 uppercase text-[10px]">収支</p>
         <p class="text-lg font-bold ${flow.incomeExpenseDelta >= 0 ? "text-status-safe" : "text-status-danger"}">${formatYen(flow.incomeExpenseDelta)}</p>
-        <p class="text-[10px] text-secondary mt-1 acc-break-words">収入 − 支出</p>
+        <p class="text-[10px] text-secondary mt-1 acc-break-words" data-acc-verbose="true">収入 − 支出</p>
       </div>
       <div class="${card.replace("border-primary", flow.reserveGap >= 0 ? "border-status-safe" : "border-status-danger")}">
         <p class="text-label-md text-secondary mb-1 uppercase text-[10px]">予想残高 <span class="normal-case">(${PERIOD_LABEL[balancePeriod]})</span></p>
@@ -693,19 +1187,24 @@
       .map((a, i) => {
         const border = colors[i] || "border-border-subtle";
         const impact = resolveActionImpactDisplay(a, data);
+        const effect = resolveExpectedEffect(a);
+        const href = actionDetailHref(a);
+        const tag = href ? "a" : "div";
+        const hrefAttr = href ? ` href="${href}"` : "";
         return `
-        <div class="group p-md border border-border-subtle rounded-xl hover:${border} hover:bg-surface-container-low transition-all cursor-pointer border-l-4 ${border}">
+        <${tag}${hrefAttr} class="group block p-md border border-border-subtle rounded-xl hover:${border} hover:bg-surface-container-low transition-all cursor-pointer border-l-4 ${border}">
           <div class="flex items-start gap-md">
             <div class="w-8 h-8 bg-surface-container rounded-lg flex items-center justify-center shrink-0 font-bold text-xs text-primary">${a.priority}</div>
             <div class="flex-1">
               <p class="text-sm font-bold text-primary">${a.title}</p>
               <p class="text-xs text-secondary mt-1">${a.templateReason}</p>
+              ${effect ? `<p class="text-xs text-status-safe mt-1">期待効果: ${effect}</p>` : ""}
               ${impact.amount > 0 ? `<p class="text-xs font-bold text-primary mt-1">${formatMoneyWithPeriod(impact.amount, impact.period)}</p>` : ""}
               ${impact.sub ? `<p class="text-[10px] text-secondary mt-0.5">${impact.sub}</p>` : ""}
             </div>
             <span class="material-symbols-outlined text-outline group-hover:text-primary text-sm">chevron_right</span>
           </div>
-        </div>`;
+        </${tag}>`;
       })
       .join("");
 
@@ -995,7 +1494,7 @@
         <ul class="space-y-2 mb-md">
           ${(sim.impacts || []).map((i) => `<li class="flex items-start gap-2 text-sm"><span class="material-symbols-outlined text-status-safe text-base shrink-0">arrow_forward</span><span class="acc-break-words">${i}</span></li>`).join("")}
         </ul>`}
-        <button class="mt-auto text-sm font-bold text-primary flex items-center gap-1 tap-scale">詳細シミュレーション <span class="material-symbols-outlined text-sm">chevron_right</span></button>
+        <button type="button" data-acc-insights-cta="preview" data-acc-insights-id="${sim.id || ""}" class="mt-auto text-sm font-bold text-primary flex items-center gap-1 tap-scale">詳細シミュレーション <span class="material-symbols-outlined text-sm">chevron_right</span></button>
       </article>`;
       })
       .join("");
@@ -1005,17 +1504,228 @@
         <header class="mb-lg">
           <p class="text-label-md text-secondary uppercase mb-1">What-if Simulation</p>
           <h2 class="font-headline-lg text-headline-lg text-primary font-bold">未来のシミュレーション</h2>
-          <p class="text-secondary text-sm mt-2 acc-break-words">Before / After 比較 — 現状 ${m.status} ${m.score}/100 · Runway ${m.runwayDays}日</p>
+          <p class="text-secondary text-sm mt-2 acc-break-words" data-acc-verbose="true">Before / After 比較 — 現状 ${m.status} ${m.score}/100 · Runway ${m.runwayDays}日</p>
         </header>
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-lg">${cards}</div>
-        <p class="text-[10px] text-secondary mt-lg text-center italic">計算: finance-core (Layer 1) — FleetMetric Pro 稼働シミュレーション含む</p>
+        <p class="text-[10px] text-secondary mt-lg text-center italic" data-acc-verbose="true">計算: finance-core (Layer 1) — FleetMetric Pro 稼働シミュレーション含む</p>
       </div>`;
   }
 
   /** Dashboard content orchestrator */
   function renderDashboardContent(data, compact) {
+    if (!compact && isEasyMode()) {
+      return renderDashboardEasy(data);
+    }
     const hero = renderSafetyHero(data, compact);
-    return hero + renderSecondaryKpis(data, compact) + renderBalanceBridge(data) + renderSurplusBrief(data);
+    const core = hero + renderSecondaryKpis(data, compact) + renderBalanceBridge(data) + renderSurplusBrief(data);
+    if (compact) {
+      return core + `<section class="bg-surface-white p-4 rounded-xl shadow-sm mt-4 mb-4">${renderTopActions(data)}</section>`;
+    }
+    const monthRef = (data.asOfMonth || "2026-06") + "-15";
+    return (
+      core +
+      `<div class="grid grid-cols-1 lg:grid-cols-3 gap-xl mt-md">
+        <div class="lg:col-span-2 bg-surface-white rounded-xl card-shadow p-lg">${renderActionCalendar(data, monthRef)}</div>
+        <div class="bg-surface-white rounded-xl card-shadow p-lg">${renderTopActions(data)}</div>
+      </div>`
+    );
+  }
+
+  function syncSidebarAccessibility(sidebar, isOpen) {
+    if (!sidebar) return;
+    const isMobile = window.innerWidth <= 767;
+    const trapFocus = isMobile && !isOpen;
+    const focusables = sidebar.querySelectorAll("a, button, input, select, textarea, [tabindex]");
+
+    if (trapFocus) {
+      sidebar.setAttribute("aria-hidden", "true");
+      if ("inert" in HTMLElement.prototype) sidebar.inert = true;
+      focusables.forEach((el) => {
+        if (!el.dataset.accPrevTabindex) {
+          el.dataset.accPrevTabindex = el.getAttribute("tabindex") ?? "";
+        }
+        el.setAttribute("tabindex", "-1");
+      });
+    } else {
+      sidebar.removeAttribute("aria-hidden");
+      if ("inert" in HTMLElement.prototype) sidebar.inert = false;
+      focusables.forEach((el) => {
+        if (el.dataset.accPrevTabindex !== undefined) {
+          const prev = el.dataset.accPrevTabindex;
+          if (prev) el.setAttribute("tabindex", prev);
+          else el.removeAttribute("tabindex");
+          delete el.dataset.accPrevTabindex;
+        }
+      });
+    }
+  }
+
+  function setCopyDensity(mode, options = {}) {
+    const { silent = false } = options;
+    const easy = mode === "easy";
+    document.body.classList.toggle("acc-easy", easy);
+    try {
+      localStorage.setItem("acc-copy-density", easy ? "easy" : "normal");
+    } catch (_) {
+      // ignore storage errors
+    }
+    syncDisplayOptionsMenu();
+    if (!silent && typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("acc-density-change"));
+    }
+  }
+
+  function setGentleTone(on, options = {}) {
+    const { silent = false } = options;
+    document.body.classList.toggle("acc-gentle", on);
+    try {
+      localStorage.setItem("acc-gentle-tone", on ? "on" : "off");
+    } catch (_) {
+      // ignore storage errors
+    }
+    syncDisplayOptionsMenu();
+    if (!silent && typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("acc-gentle-change"));
+    }
+  }
+
+  function closeDisplayOptionsMenu() {
+    const panel = document.getElementById("acc-display-menu-panel");
+    const trigger = document.getElementById("acc-display-menu-trigger");
+    if (panel) panel.hidden = true;
+    if (trigger) trigger.setAttribute("aria-expanded", "false");
+  }
+
+  function syncDisplayOptionsMenu() {
+    const menu = document.getElementById("acc-display-menu");
+    if (!menu) return;
+
+    const easy = document.body.classList.contains("acc-easy");
+    const gentle = document.body.classList.contains("acc-gentle");
+
+    menu.querySelectorAll('[data-acc-display-opt="density"]').forEach((el) => {
+      const selected = el.dataset.value === (easy ? "easy" : "normal");
+      el.setAttribute("aria-checked", selected ? "true" : "false");
+      el.classList.toggle("is-active", selected);
+    });
+
+    const gentleEl = menu.querySelector('[data-acc-display-opt="gentle"]');
+    if (gentleEl) {
+      gentleEl.setAttribute("aria-checked", gentle ? "true" : "false");
+      gentleEl.classList.toggle("is-active", gentle);
+    }
+  }
+
+  function ensureTopbarActions(topbar) {
+    let right = topbar.querySelector(".acc-topbar-actions");
+    if (!right) {
+      const children = Array.from(topbar.children);
+      const anchor = children[children.length - 1];
+      right = anchor instanceof HTMLElement && anchor.tagName === "DIV" ? anchor : null;
+      if (!right) {
+        right = document.createElement("div");
+        right.className = "flex items-center gap-2 acc-topbar-actions";
+        topbar.appendChild(right);
+      } else {
+        right.classList.add("acc-topbar-actions", "flex", "items-center", "gap-2");
+      }
+    }
+    return right;
+  }
+
+  function initDisplayOptionsMenu() {
+    const topbar = document.querySelector(".acc-topbar");
+    if (!topbar) return;
+    if (document.getElementById("acc-display-menu")) {
+      syncDisplayOptionsMenu();
+      return;
+    }
+
+    document.getElementById("acc-density-toggle")?.remove();
+    document.getElementById("acc-gentle-toggle")?.remove();
+
+    const right = ensureTopbarActions(topbar);
+    const menu = document.createElement("div");
+    menu.id = "acc-display-menu";
+    menu.className = "acc-display-menu";
+    menu.innerHTML = `
+      <button
+        type="button"
+        id="acc-display-menu-trigger"
+        class="acc-display-menu-trigger"
+        aria-haspopup="menu"
+        aria-expanded="false"
+        aria-controls="acc-display-menu-panel"
+      >
+        <span class="material-symbols-outlined acc-display-menu-icon" aria-hidden="true">tune</span>
+        <span class="acc-display-menu-label">表示</span>
+        <span class="material-symbols-outlined acc-display-menu-chevron" aria-hidden="true">expand_more</span>
+      </button>
+      <div id="acc-display-menu-panel" class="acc-display-menu-panel" role="menu" hidden>
+        <p class="acc-display-menu-heading" role="presentation">レイアウト</p>
+        <button type="button" role="menuitemradio" class="acc-display-menu-item" data-acc-display-opt="density" data-value="easy" aria-checked="false">
+          <span class="material-symbols-outlined" aria-hidden="true">view_compact</span>
+          かんたん表示
+        </button>
+        <button type="button" role="menuitemradio" class="acc-display-menu-item" data-acc-display-opt="density" data-value="normal" aria-checked="false">
+          <span class="material-symbols-outlined" aria-hidden="true">view_agenda</span>
+          通常表示
+        </button>
+        <p class="acc-display-menu-heading acc-display-menu-heading-divider" role="presentation">トーン</p>
+        <button type="button" role="menuitemcheckbox" class="acc-display-menu-item" data-acc-display-opt="gentle" aria-checked="false">
+          <span class="material-symbols-outlined" aria-hidden="true">self_improvement</span>
+          やさしい表示
+        </button>
+      </div>`;
+
+    right.insertBefore(menu, right.firstChild);
+
+    const trigger = menu.querySelector("#acc-display-menu-trigger");
+    const panel = menu.querySelector("#acc-display-menu-panel");
+
+    trigger?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const open = panel?.hidden !== false;
+      if (open) {
+        panel.hidden = false;
+        trigger.setAttribute("aria-expanded", "true");
+      } else {
+        closeDisplayOptionsMenu();
+      }
+    });
+
+    menu.querySelectorAll("[data-acc-display-opt]").forEach((item) => {
+      item.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const opt = item.dataset.accDisplayOpt;
+        if (opt === "density") {
+          setCopyDensity(item.dataset.value === "easy" ? "easy" : "normal");
+        } else if (opt === "gentle") {
+          setGentleTone(!document.body.classList.contains("acc-gentle"));
+        }
+        closeDisplayOptionsMenu();
+      });
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!menu.contains(e.target)) closeDisplayOptionsMenu();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeDisplayOptionsMenu();
+    });
+
+    let savedDensity = "easy";
+    let savedGentle = "on";
+    try {
+      savedDensity = localStorage.getItem("acc-copy-density") || "easy";
+      savedGentle = localStorage.getItem("acc-gentle-tone") ?? "on";
+    } catch (_) {
+      savedDensity = "easy";
+      savedGentle = "on";
+    }
+    setGentleTone(savedGentle !== "off", { silent: true });
+    setCopyDensity(savedDensity, { silent: true });
+    syncDisplayOptionsMenu();
   }
 
   function initResponsiveShell() {
@@ -1024,18 +1734,34 @@
     const backdrop = document.getElementById("acc-sidebar-backdrop");
     if (!sidebar || !toggle) return;
 
+    if (!toggle.getAttribute("aria-label")) {
+      toggle.setAttribute("aria-label", "メニュー");
+    }
+    sidebar.setAttribute("aria-label", "補助メニュー");
+
     function close() {
       sidebar.classList.remove("is-open");
       backdrop?.classList.add("hidden");
+      syncSidebarAccessibility(sidebar, false);
     }
+
+    function open() {
+      sidebar.classList.add("is-open");
+      backdrop?.classList.remove("hidden");
+      syncSidebarAccessibility(sidebar, true);
+    }
+
     toggle.addEventListener("click", () => {
-      sidebar.classList.toggle("is-open");
-      backdrop?.classList.toggle("hidden");
+      if (sidebar.classList.contains("is-open")) close();
+      else open();
     });
     backdrop?.addEventListener("click", close);
     window.addEventListener("resize", () => {
       if (window.innerWidth > 767) close();
+      else syncSidebarAccessibility(sidebar, sidebar.classList.contains("is-open"));
     });
+    syncSidebarAccessibility(sidebar, false);
+    initDisplayOptionsMenu();
   }
 
   function initSurplusBrief(root = document) {
@@ -1233,10 +1959,11 @@
   function renderSidebarStatus(data) {
     const flow = getBalanceStatusContext(data);
     const s = flow.tone;
+    const gentle = isGentleTone();
     return `<div class="px-2 mb-4" data-acc="sidebar-status">
-      <div class="text-label-md text-secondary mb-1 uppercase text-[10px]">今月の収支</div>
+      <div class="text-label-md text-secondary mb-1 uppercase text-[10px]">${gentle ? "今月" : "今月の収支"}</div>
       <span class="inline-flex items-center gap-1 ${s.text} font-bold text-sm">${flow.status}</span>
-      <div class="w-full bg-surface-container h-1.5 rounded-full mt-2 overflow-hidden">
+      <div class="w-full bg-surface-container h-1.5 rounded-full mt-2 overflow-hidden" data-acc-harsh="true">
         <div class="${s.bar} h-full rounded-full" style="width:${flow.reserveGap >= 0 ? 100 : 35}%"></div>
       </div>
       <p class="text-[10px] text-secondary mt-1">収支 ${formatYen(flow.incomeExpenseDelta)} · 残高 ${formatYen(flow.projectedBalance)}</p>
@@ -1251,373 +1978,979 @@
     });
   }
 
+  function ensureAccPreviewModal() {
+    let modal = document.getElementById("acc-cta-modal");
+    if (modal) return modal;
+
+    modal = document.createElement("div");
+    modal.id = "acc-cta-modal";
+    modal.className = "hidden fixed inset-0 z-50 flex items-center justify-center p-4";
+    modal.innerHTML = `
+      <div class="absolute inset-0 bg-black/40" data-acc-cta-dismiss></div>
+      <div class="relative bg-surface-white rounded-xl shadow-xl max-w-md w-full p-lg card-shadow" role="dialog" aria-modal="true">
+        <h4 class="font-bold text-primary text-lg mb-md" data-acc-cta-modal-title></h4>
+        <ul class="space-y-2 text-sm text-secondary mb-lg" data-acc-cta-modal-body></ul>
+        <p class="text-[10px] text-secondary mb-md" data-acc-cta-modal-note>モック段階の結果プレビューです。実際の振替・予算確保は未実行です。</p>
+        <button type="button" class="w-full bg-primary text-white py-sm rounded-xl font-bold tap-scale" data-acc-cta-dismiss>閉じる</button>
+      </div>`;
+    document.body.appendChild(modal);
+    modal.querySelectorAll("[data-acc-cta-dismiss]").forEach((el) => {
+      el.addEventListener("click", () => modal.classList.add("hidden"));
+    });
+    return modal;
+  }
+
+  function showAccPreviewModal(title, lines, disclaimer) {
+    const modal = ensureAccPreviewModal();
+    const titleEl = modal.querySelector("[data-acc-cta-modal-title]");
+    const bodyEl = modal.querySelector("[data-acc-cta-modal-body]");
+    const noteEl = modal.querySelector("[data-acc-cta-modal-note]");
+    if (titleEl) titleEl.textContent = title;
+    if (bodyEl) {
+      bodyEl.innerHTML = (lines || [])
+        .filter(Boolean)
+        .map((line) => `<li class="acc-break-words">• ${line}</li>`)
+        .join("");
+    }
+    if (noteEl && disclaimer) noteEl.textContent = disclaimer;
+    modal.classList.remove("hidden");
+  }
+
+  const CASHFLOW_IMPORT_MODES = {
+    csv: {
+      title: "銀行明細CSVをドロップ",
+      description: "口座の取引CSVをアップロードすると、支出・収入を自動分類します",
+      formats: "Supports: CSV",
+      icon: "cloud_upload",
+      cta: "CSVを解析する",
+      dropMessage: "CSVは /api/import/csv で解析（LLM不使用）",
+      hints: ["csv"],
+      status: "銀行明細モード — 複数口座の合算にも対応",
+    },
+    ss: {
+      title: "領収書・明細画像をドロップ",
+      description: "カメラで撮影した領収書や、PDFのレシートをアップロードしてください",
+      formats: "Supports: JPG, PNG, PDF",
+      icon: "photo_camera",
+      cta: "画像をスキャンする",
+      dropMessage: "OCRで日付・金額・店名を抽出（モック）",
+      hints: ["ss"],
+      status: "スクリーンショットモード — 金額・日付・店名をOCR抽出",
+    },
+    ai: {
+      title: "AIが明細を自動読取",
+      description: "銀行アプリのスクショやメール請求書をAIが解析し、取引候補を生成します",
+      formats: "Supports: JPG, PNG, PDF, HEIC",
+      icon: "document_scanner",
+      cta: "AIスキャンを開始",
+      dropMessage: "AIスキャンは候補を生成後、承認待ち一覧に追加（モック）",
+      hints: ["ss", "ai"],
+      status: "AIスキャンモード — 低信頼度の候補は承認待ちに回します",
+    },
+  };
+
+  function bindCashflowImportTabs(root = document) {
+    const scope = root.querySelector ? root : document;
+    const panel = scope.querySelector("[data-acc-import-panel]");
+    const tabs = scope.querySelectorAll("[data-acc-import-tab]");
+    if (!panel || !tabs.length) return;
+
+    const titleEl = panel.querySelector("[data-import-title]");
+    const descEl = panel.querySelector("[data-import-description]");
+    const formatsEl = panel.querySelector("[data-import-formats]");
+    const iconEl = panel.querySelector("[data-import-icon]");
+    const statusEl = scope.querySelector("[data-import-status]");
+    const ctaEl = scope.querySelector("[data-import-cta]");
+    const dropzone = panel.querySelector("#dropzone") || panel.querySelector("[data-import-dropzone]");
+    const hintCards = scope.querySelectorAll("[data-import-hint]");
+    let currentMode = "csv";
+
+    function applyMode(modeId) {
+      const mode = CASHFLOW_IMPORT_MODES[modeId];
+      if (!mode) return;
+      currentMode = modeId;
+
+      tabs.forEach((tab) => {
+        const active = tab.getAttribute("data-acc-import-tab") === modeId;
+        tab.classList.toggle("tab-active", active);
+        tab.classList.toggle("text-primary", active);
+        tab.classList.toggle("text-secondary", !active);
+        tab.setAttribute("aria-selected", active ? "true" : "false");
+      });
+
+      if (titleEl) titleEl.textContent = mode.title;
+      if (descEl) descEl.textContent = mode.description;
+      if (formatsEl) formatsEl.textContent = mode.formats;
+      if (iconEl) iconEl.textContent = mode.icon;
+      if (statusEl) statusEl.textContent = mode.status;
+      if (ctaEl) {
+        const label = ctaEl.querySelector("[data-import-cta-label]");
+        if (label) label.textContent = mode.cta;
+      }
+
+      hintCards.forEach((card) => {
+        const hints = (card.getAttribute("data-import-hint") || "").split(/\s+/);
+        const on = mode.hints.some((h) => hints.includes(h));
+        card.classList.toggle("ring-2", on);
+        card.classList.toggle("ring-primary/30", on);
+        card.classList.toggle("bg-surface-container-lowest", on);
+      });
+
+      if (dropzone) {
+        dropzone.style.opacity = "0";
+        setTimeout(() => { dropzone.style.opacity = "1"; }, 100);
+      }
+    }
+
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", () => applyMode(tab.getAttribute("data-acc-import-tab")));
+    });
+
+    if (dropzone) {
+      const showDropFeedback = (e) => {
+        e.preventDefault();
+        dropzone.classList.remove("bg-primary-fixed/20");
+        showAccPreviewModal(
+          `${CASHFLOW_IMPORT_MODES[currentMode].cta}（プレビュー）`,
+          [
+            CASHFLOW_IMPORT_MODES[currentMode].dropMessage,
+            "解析後は下の「承認待ちの取引明細」に候補が追加されます",
+            "モック段階のため実際の取込は行われません",
+          ],
+          "モック段階の取込プレビューです。実際のファイル解析は未実行です。",
+        );
+      };
+      dropzone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dropzone.classList.add("bg-primary-fixed/20");
+      });
+      dropzone.addEventListener("dragleave", () => dropzone.classList.remove("bg-primary-fixed/20"));
+      dropzone.addEventListener("drop", showDropFeedback);
+      dropzone.addEventListener("click", showDropFeedback);
+    }
+
+    if (ctaEl) {
+      ctaEl.addEventListener("click", () => {
+        const mode = CASHFLOW_IMPORT_MODES[currentMode];
+        showAccPreviewModal(
+          `${mode.cta}（プレビュー）`,
+          [mode.status, mode.dropMessage, "完了後は承認待ち一覧で確認・承認できます"],
+          "モック段階の結果プレビューです。",
+        );
+      });
+    }
+
+    applyMode(currentMode);
+  }
+
+  function bindSubscriptionsCtas(data, root = document) {
+    const scope = root.querySelector ? root : document;
+    const opt = data.brief?.subscriptionOptimization;
+    if (!opt) return;
+
+    const auditBtn = scope.querySelector("[data-acc-subs-cta='audit-report']");
+    const cleanupBtn = scope.querySelector("[data-acc-subs-cta='bulk-cleanup']");
+    const candidates = opt.candidates || [];
+
+    if (auditBtn) {
+      auditBtn.onclick = () => {
+        const lines = [
+          `${candidates.length}件の解約候補を検出（推定 ${formatYen(opt.monthlySavingPotential)}/月 · ${formatYen(opt.yearlySavingPotential)}/年）`,
+          ...candidates.map(
+            (c, i) => `${i + 1}. ${c.name}: ${formatYen(c.yearlySaving)}/年 — ${c.reason}`,
+          ),
+          ...(opt.keepRecommendations || []).map((k) => `維持推奨: ${k.name} — ${k.reason}`),
+        ];
+        showAccPreviewModal(
+          "サブスク監査レポート（プレビュー）",
+          lines,
+          "モック段階の監査レポートです。実際の解約・変更は未実行です。",
+        );
+      };
+    }
+
+    if (cleanupBtn) {
+      cleanupBtn.onclick = () => {
+        showAccPreviewModal(
+          "一括クリーンアップ（プレビュー）",
+          [
+            `対象: ${candidates.map((c) => c.name).join("、") || "解約候補なし"}`,
+            `想定削減: ${formatYen(opt.monthlySavingPotential)}/月（${formatYen(opt.yearlySavingPotential)}/年）`,
+            "実行前に各サービスの代替手段・データ移行を確認してください",
+            "完了後はダッシュボードの固定費とRunwayが更新されます（モック）",
+          ],
+          "モック段階の一括処理プレビューです。実際の解約は未実行です。",
+        );
+      };
+    }
+  }
+
+  function bindDashboardCtas(data, root = document) {
+    const scope = root.querySelector ? root : document;
+    const buttons = scope.querySelectorAll("[data-acc-cta]");
+    if (!buttons.length) return;
+
+    const s = data.surplus || {};
+    const b = data.brief || {};
+    const primary = b.primaryAction;
+    const previews = {
+      "tax-reserve": {
+        title: "税金積立を開始（プレビュー）",
+        lines: [
+          `納税準備口座へ ${formatMoneyWithPeriod(s.taxReserveSuggested || 0, "monthly")} を振替予定`,
+          "年末納税不足リスク: 中 → 低",
+          "実行後も月末残高は安全ラインを上回る見込み",
+        ],
+      },
+      "ai-dev-budget": {
+        title: "AI開発予算を確保（プレビュー）",
+        lines: [
+          `ツール・API予算に ${formatMoneyWithPeriod(s.aiDevBudgetSuggested || 0, "monthly")} を確保`,
+          "今月の開発・運用費を計画内に収められます",
+          "余剰金からの配分 — いつでも配分を変更可能",
+        ],
+      },
+      "primary-action": {
+        title: "推奨アクションを実行（プレビュー）",
+        lines: [
+          primary ? primary.title : "最優先アクションを実行",
+          primary?.templateReason || b.gapMessage || "",
+          primary?.impactYen ? `影響額: ${formatYen(primary.impactYen)}` : "",
+        ].filter(Boolean),
+      },
+      details: {
+        title: "詳細を見る（プレビュー）",
+        lines: [
+          b.gapMessage || "安全状態の詳細を確認",
+          b.workDaysMessage || "",
+          "Cashflow / Subscriptions 画面で内訳を確認できます",
+        ].filter(Boolean),
+      },
+    };
+
+    buttons.forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        if (btn.hasAttribute("data-surplus-option")) return;
+        const key = btn.getAttribute("data-acc-cta");
+        const preview = previews[key];
+        if (!preview) return;
+        e.preventDefault();
+        e.stopPropagation();
+        showAccPreviewModal(preview.title, preview.lines);
+      });
+    });
+
+    const previewBtn = scope.querySelector("[data-surplus-preview]");
+    if (previewBtn) {
+      previewBtn.addEventListener("click", () => {
+        const active = scope.querySelector("[data-surplus-option][aria-pressed='true']");
+        const key = active?.getAttribute("data-acc-cta");
+        if (!key) return;
+        const preview = previews[key];
+        if (!preview) return;
+        showAccPreviewModal(preview.title, preview.lines);
+      });
+    }
+  }
+
   /** Embedded fallback — mirrors finance-core sample output when API offline */
   const FALLBACK_DASHBOARD = {
-    asOfMonth: "2026-06",
-    safetyBufferTarget: 1109220,
-    metrics: {
-      status: "SAFE",
-      score: 100,
-      gapToSafety: 0,
-      runwayDays: 112,
-      safeUntilDate: "2026-10-05",
-      projectedBalanceAfterPayments: 1429220,
-      monthlyBurnRate: 380000,
-    },
-    brief: {
-      status: "SAFE",
-      score: 100,
-      gapToSafety: 0,
-      gapWorkDays: 0,
-      runwayDays: 112,
-      safeUntilDate: "2026-10-05",
-      gapMessage: "今のペースなら問題ありません",
-      workDaysMessage: "追加稼働は不要です",
-      primaryAction: {
-        priority: 1,
-        id: "cancel-sub-dropbox",
-        title: "Dropbox Professional を解約（年間 ¥23,760 削減）",
-        impactYen: 23760,
-        impactPeriod: "yearly",
-        category: "subscription",
-        templateReason: "過去90日間の利用実績がありません（最終利用: 120日前）",
+      "asOfMonth": "2026-06",
+      "safetyBufferTarget": 50000,
+      "revolvingDebt": {
+          "balance": 480000,
+          "minimumPayment": 28000,
+          "aprPercent": 15
       },
-      priorityActions: [
-        {
-          priority: 1,
-          id: "cancel-sub-dropbox",
-          title: "Dropbox Professional を解約（年間 ¥23,760 削減）",
-          impactYen: 23760,
-          impactPeriod: "yearly",
-          category: "subscription",
-          templateReason: "過去90日間の利用実績がありません（最終利用: 120日前）",
-        },
-        {
-          priority: 2,
-          id: "subscription-cleanup",
-          title: "サブスク整理（月 ¥12,860 改善）",
-          impactYen: 12860,
-          impactPeriod: "monthly",
-          category: "subscription",
-          templateReason: "3 件の解約候補を検出",
-        },
-        {
-          priority: 3,
-          id: "tax-reserve",
-          title: "税金積立 ¥125,000 を開始",
-          impactYen: 125000,
-          impactPeriod: "monthly",
-          category: "tax",
-          templateReason: "今月収入の10%を納税準備口座へ",
-        },
+      "metrics": {
+          "status": "DANGER",
+          "score": 24,
+          "gapToSafety": 41500,
+          "runwayDays": 6,
+          "safeUntilDate": "2026-06-28",
+          "projectedBalanceAfterPayments": 8500,
+          "monthlyBurnRate": 198000
+      },
+      "brief": {
+          "status": "DANGER",
+          "score": 24,
+          "gapToSafety": 41500,
+          "gapWorkDays": 0,
+          "runwayDays": 6,
+          "safeUntilDate": "2026-06-28",
+          "gapMessage": "あと ¥41,500 で最低ラインです",
+          "workDaysMessage": "給料日前後は新規の出費を控えてください",
+          "primaryAction": {
+              "priority": 1,
+              "id": "revo-extra-payment",
+              "title": "カードリボの返済を月 ¥5,000 増やす",
+              "impactYen": 5000,
+              "impactPeriod": "monthly",
+              "category": "debt",
+              "templateReason": "残高 ¥48万・金利15% — 最低返済のままだと減りません"
+          },
+          "priorityActions": [
+              {
+                  "priority": 1,
+                  "id": "revo-extra-payment",
+                  "title": "カードリボの返済を月 ¥5,000 増やす",
+                  "impactYen": 5000,
+                  "impactPeriod": "monthly",
+                  "category": "debt",
+                  "templateReason": "残高 ¥48万・金利15% — 最低返済のままだと減りません",
+                  "expectedEffect": "利息の増え方を抑え、Runwayを延ばす"
+              },
+              {
+                  "priority": 2,
+                  "id": "subscription-cleanup",
+                  "title": "Netflix・Spotify を解約（月 ¥2,470 削減）",
+                  "impactYen": 2470,
+                  "impactPeriod": "monthly",
+                  "category": "subscription",
+                  "templateReason": "生活必需品ではないサブスクを2件検出",
+                  "expectedEffect": "今月の現金不足を少し埋める"
+              },
+              {
+                  "priority": 3,
+                  "id": "cut-variable-spend",
+                  "title": "来週の食費・外食を ¥3,000 抑える",
+                  "impactYen": 3000,
+                  "impactPeriod": "monthly",
+                  "category": "expense",
+                  "templateReason": "給料日まであと3日 — 現金が足りない見込み",
+                  "expectedEffect": "口座残高の底割りを防ぐ"
+              }
+          ],
+          "subscriptionOptimization": {
+              "monthlySubsTotal": 2870,
+              "monthlySavingPotential": 2470,
+              "yearlySavingPotential": 29640,
+              "candidates": [
+                  {
+                      "subscriptionId": "sub-netflix",
+                      "name": "Netflix",
+                      "monthlyCost": 1490,
+                      "yearlySaving": 17880,
+                      "reason": "今月の視聴は2時間のみ — 解約しても生活に影響小",
+                      "priority": 1
+                  },
+                  {
+                      "subscriptionId": "sub-spotify",
+                      "name": "Spotify",
+                      "monthlyCost": 980,
+                      "yearlySaving": 11760,
+                      "reason": "無料プランで代替可能",
+                      "priority": 2
+                  }
+              ],
+              "keepRecommendations": [
+                  {
+                      "name": "iCloud+ 200GB",
+                      "reason": "写真・書類のバックアップ用 — 月¥400のみ"
+                  }
+              ]
+          },
+          "calendarMarkers": [
+              {
+                  "date": "2026-06-22",
+                  "type": "danger",
+                  "label": "残高 ¥8,500 — 要注意",
+                  "countdownDays": 0,
+                  "amount": 8500
+              },
+              {
+                  "date": "2026-06-25",
+                  "type": "income",
+                  "label": "給与入金 ¥185,000",
+                  "countdownDays": 3,
+                  "amount": 185000
+              },
+              {
+                  "date": "2026-06-26",
+                  "type": "bill",
+                  "label": "車ローン ¥15,000",
+                  "countdownDays": 4,
+                  "amount": 15000
+              },
+              {
+                  "date": "2026-06-28",
+                  "type": "danger",
+                  "label": "カード引落（リボ）¥28,000",
+                  "countdownDays": 6,
+                  "amount": 28000
+              }
+          ],
+          "paymentWarnings": [
+              {
+                  "message": "リボ残高が先月より ¥12,000 増加",
+                  "severity": "high"
+              }
+          ],
+          "nextBigPayment": {
+              "name": "カード引落（リボ）",
+              "daysUntil": 6,
+              "amount": 28000
+          }
+      },
+      "kpis": {
+          "projectedIncome": 185000,
+          "projectedIncomePeriod": "monthly",
+          "confirmedExpenses": 198000,
+          "confirmedExpensesPeriod": "monthly",
+          "projectedBalance": 8500,
+          "projectedBalancePeriod": "balance"
+      },
+      "fleetMetric": {
+          "lastSync": "2026-06-15T22:34:00",
+          "syncCount": 1,
+          "status": "normal",
+          "syncMethod": "給与明細",
+          "monthlyRevenueSynced": 185000,
+          "recommendedWorkDays": 0
+      },
+      "surplus": {
+          "amount": 0,
+          "amountPeriod": "balance",
+          "investmentCandidate": 0,
+          "investmentCandidatePeriod": "monthly",
+          "taxReserveSuggested": 0,
+          "taxReserveSuggestedPeriod": "monthly",
+          "aiDevBudgetSuggested": 0,
+          "aiDevBudgetSuggestedPeriod": "monthly"
+      },
+      "simulations": [
+          {
+              "id": "revo-extra-5k",
+              "title": "リボ返済を月 ¥5,000 増やした場合",
+              "summary": "最低返済から少し増やし、利息の膨らみを抑える",
+              "before": {
+                  "safety": 24,
+                  "runway": 6,
+                  "surplus": 0
+              },
+              "after": {
+                  "safety": 31,
+                  "runway": 11,
+                  "surplus": 0
+              },
+              "impacts": [
+                  "利息の増加を抑制",
+                  "Runway: 6日 → 11日",
+                  "完済までの期間が短縮"
+              ]
+          },
+          {
+              "id": "cancel-streaming",
+              "title": "Netflix・Spotify を解約した場合",
+              "summary": "生活に必須でないサブスクを2件やめる",
+              "before": {
+                  "safety": 24,
+                  "runway": 6,
+                  "surplus": 0
+              },
+              "after": {
+                  "safety": 28,
+                  "runway": 8,
+                  "surplus": 0
+              },
+              "impacts": [
+                  "月 ¥2,470 削減",
+                  "Runway: 6日 → 8日",
+                  "来月の引落負担が軽くなる"
+              ]
+          },
+          {
+              "id": "cut-food-10k",
+              "title": "来月の食費・外食を ¥10,000 抑えた場合",
+              "summary": "コンビニ・外食を我慢して現金を残す",
+              "before": {
+                  "safety": 24,
+                  "runway": 6,
+                  "surplus": 0
+              },
+              "after": {
+                  "safety": 30,
+                  "runway": 9,
+                  "surplus": 0
+              },
+              "impacts": [
+                  "現金不足を回避",
+                  "Runway: 6日 → 9日",
+                  "リボへの回しが減る"
+              ]
+          }
       ],
-      subscriptionOptimization: {
-        monthlySavingPotential: 12860,
-        yearlySavingPotential: 154320,
-        candidates: [
-          { subscriptionId: "sub-dropbox", name: "Dropbox Professional", monthlyCost: 1980, yearlySaving: 23760, reason: "過去90日間の利用実績がありません（最終利用: 120日前）", priority: 1 },
-          { subscriptionId: "sub-zoom", name: "Zoom Pro", monthlyCost: 2100, yearlySaving: 25200, reason: "利用頻度が低いです（利用率 24%）。Google Meetで代替可能", priority: 2 },
-        ],
-        duplicateCategories: ["design"],
-        keepRecommendations: [
-          { name: "Adobe Creative Cloud", reason: "FleetMetric Pro / AI開発 / 動画制作に使用。利用率高・代替コスト高" },
-        ],
-      },
-      calendarMarkers: [
-        { date: "2026-06-17", type: "work_recommended", label: "休息日推奨 — 十分稼働済" },
-        { date: "2026-06-20", type: "bill", label: "オフィス家賃 ¥88,000", countdownDays: 5, amount: 88000 },
-        { date: "2026-06-25", type: "bill", label: "ビジネスカード引落 ¥125,000", countdownDays: 10, amount: 125000 },
-        { date: "2026-06-27", type: "bill", label: "Adobe CC ¥7,780", countdownDays: 12, amount: 7780 },
-      ],
-      paymentWarnings: [],
-      nextBigPayment: { name: "ビジネスカード引落", daysUntil: 10, amount: 125000 },
-    },
-    kpis: {
-      projectedIncome: 1250000,
-      projectedIncomePeriod: "monthly",
-      confirmedExpenses: 420000,
-      confirmedExpensesPeriod: "monthly",
-      projectedBalance: 1429220,
-      projectedBalancePeriod: "balance",
-    },
-    fleetMetric: {
-      lastSync: "2026-06-15T22:34:00",
-      syncCount: 12,
-      status: "normal",
-      syncMethod: "CSV",
-      monthlyRevenueSynced: 1250000,
-      recommendedWorkDays: 0,
-    },
-    surplus: {
-      amount: 320000,
-      amountPeriod: "balance",
-      investmentCandidate: 150000,
-      investmentCandidatePeriod: "monthly",
-      taxReserveSuggested: 125000,
-      taxReserveSuggestedPeriod: "monthly",
-      aiDevBudgetSuggested: 50000,
-      aiDevBudgetSuggestedPeriod: "monthly",
-    },
-    simulations: [
-      {
-        id: "cancel-dropbox",
-        title: "Dropbox Professional を解約した場合",
-        summary: "未使用ストレージの解約で経費を圧縮",
-        before: { safety: 100, runway: 112, surplus: 320000 },
-        after: { safety: 100, runway: 118, surplus: 343760 },
-        impacts: ["年間改善: ¥23,760", "Runway: 112日 → 118日"],
-      },
-      {
-        id: "work-2days",
-        title: "あと2日稼働した場合（FleetMetric Pro）",
-        summary: "FleetMetric Pro で追加稼働した場合の収入改善",
-        before: { safety: 100, runway: 112, surplus: 320000 },
-        after: { safety: 100, runway: 125, surplus: 332000 },
-        incomeDelta: 12000,
-        impacts: ["Runway: 112日 → 125日", "余剰資金: +¥12,000"],
-      },
-      {
-        id: "tax-10pct",
-        title: "税金積立を月10%に変更した場合",
-        summary: "納税準備を強化し年末不足リスクを低減",
-        before: { safety: 100, runway: 112, surplus: 320000 },
-        after: { safety: 98, runway: 108, surplus: 195000 },
-        impacts: ["年末不足リスク: -35%", "Runway: 112日 → 108日"],
-      },
-    ],
-    copy: {
-      adviceText: "今月は安全圏です。余剰資金 ¥320,000 のうち ¥125,000 を税金積立、¥50,000 をAI開発予算に回せます。",
-      priorityActionsText: [
-        "税金積立 ¥125,000 を開始",
-        "AI開発予算 ¥50,000 を確保",
-        "Dropbox Professional を解約（年間 ¥23,760 削減）",
-      ],
-      subscriptionComment: "Dropbox Professional 解約で年間 ¥23,760 削減可能。Adobe CC は維持推奨",
-      usedFallback: true,
-    },
+      "copy": {
+          "adviceText": "貯金はほぼありません。リボ残高 ¥48万の利息が毎月の負けです。まず最低返済から少しでも増やすのが近道です。",
+          "priorityActionsText": [
+              "カードリボの返済を月 ¥5,000 増やす",
+              "Netflix・Spotify を解約（月 ¥2,470 削減）",
+              "来週の食費・外食を ¥3,000 抑える"
+          ],
+          "subscriptionComment": "車ローン ¥15,000/月は維持が必要。削れるのはサブスクから",
+          "usedFallback": true
+      }
   };
 
   const CAUTION_FALLBACK = {
-    metrics: {
-      status: "CAUTION",
-      score: 82,
-      gapToSafety: 18000,
-      runwayDays: 34,
-      safeUntilDate: "2026-07-19",
-      projectedBalanceAfterPayments: 882000,
-      monthlyBurnRate: 380000,
-    },
-    brief: {
-      status: "CAUTION",
-      score: 82,
-      gapToSafety: 18000,
-      gapWorkDays: 3,
-      runwayDays: 34,
-      safeUntilDate: "2026-07-19",
-      gapMessage: "あと ¥18,000 で安全圏です",
-      workDaysMessage: "あと 3 日の追加稼働を推奨します",
-      primaryAction: {
-        priority: 1,
-        id: "close-gap",
-        title: "追加収入 ¥18,000 を確保",
-        impactYen: 18000,
-        category: "income",
-        templateReason: "FleetMetric Pro であと2日稼働すれば安全圏に到達",
+      "asOfMonth": "2026-06",
+      "safetyBufferTarget": 50000,
+      "revolvingDebt": {
+          "balance": 465000,
+          "minimumPayment": 27000,
+          "aprPercent": 15
       },
-      priorityActions: [
-        {
-          priority: 1,
-          id: "close-gap",
-          title: "追加収入 ¥18,000 を確保",
-          impactYen: 18000,
-          category: "income",
-          templateReason: "FleetMetric Pro であと2日稼働すれば安全圏",
-        },
-        {
-          priority: 2,
-          id: "cancel-sub-dropbox",
-          title: "Dropbox Professional を解約（年間 ¥23,760 削減）",
-          impactYen: 23760,
-          category: "subscription",
-          templateReason: "過去90日間の利用実績なし",
-        },
-        {
-          priority: 3,
-          id: "tax-reserve",
-          title: "税金積立 ¥125,000 を開始",
-          impactYen: 125000,
-          category: "tax",
-          templateReason: "今月収入の10%を納税準備口座へ",
-        },
+      "metrics": {
+          "status": "CAUTION",
+          "score": 52,
+          "gapToSafety": 22000,
+          "runwayDays": 12,
+          "safeUntilDate": "2026-07-04",
+          "projectedBalanceAfterPayments": 28000,
+          "monthlyBurnRate": 193000
+      },
+      "brief": {
+          "status": "CAUTION",
+          "score": 52,
+          "gapToSafety": 22000,
+          "gapWorkDays": 0,
+          "runwayDays": 12,
+          "safeUntilDate": "2026-07-04",
+          "gapMessage": "あと ¥22,000 で最低ラインです",
+          "workDaysMessage": "食費とサブスクの見直しを続けてください",
+          "primaryAction": {
+              "priority": 1,
+              "id": "cancel-spotify",
+              "title": "Spotify を解約（月 ¥980 削減）",
+              "impactYen": 980,
+              "impactPeriod": "monthly",
+              "category": "subscription",
+              "templateReason": "Netflix 解約後も支出が収入を上回っています"
+          },
+          "priorityActions": [
+              {
+                  "priority": 1,
+                  "id": "cancel-spotify",
+                  "title": "Spotify を解約（月 ¥980 削減）",
+                  "impactYen": 980,
+                  "impactPeriod": "monthly",
+                  "category": "subscription",
+                  "templateReason": "無料プランで代替可能",
+                  "expectedEffect": "来月の黒字化に一歩近づく"
+              },
+              {
+                  "priority": 2,
+                  "id": "revo-extra-payment",
+                  "title": "リボ返済を月 ¥3,000 増やす",
+                  "impactYen": 3000,
+                  "impactPeriod": "monthly",
+                  "category": "debt",
+                  "templateReason": "残高 ¥46.5万 — 利息の膨らみを抑える",
+                  "expectedEffect": "完済までの期間を短縮"
+              },
+              {
+                  "priority": 3,
+                  "id": "cut-variable-spend",
+                  "title": "外食を今週 ¥2,000 抑える",
+                  "impactYen": 2000,
+                  "impactPeriod": "monthly",
+                  "category": "expense",
+                  "templateReason": "給料日まであと10日",
+                  "expectedEffect": "口座残高の底割りを防ぐ"
+              }
+          ],
+          "subscriptionOptimization": {
+              "monthlySubsTotal": 1380,
+              "monthlySavingPotential": 980,
+              "yearlySavingPotential": 11760,
+              "candidates": [
+                  {
+                      "subscriptionId": "sub-spotify",
+                      "name": "Spotify",
+                      "monthlyCost": 980,
+                      "yearlySaving": 11760,
+                      "reason": "無料プランで代替可能",
+                      "priority": 2
+                  }
+              ],
+              "keepRecommendations": [
+                  {
+                      "name": "iCloud+ 200GB",
+                      "reason": "写真・書類のバックアップ用 — 月¥400のみ"
+                  }
+              ]
+          },
+          "calendarMarkers": [
+              {
+                  "date": "2026-06-25",
+                  "type": "income",
+                  "label": "給与入金 ¥185,000",
+                  "countdownDays": 3,
+                  "amount": 185000
+              },
+              {
+                  "date": "2026-06-26",
+                  "type": "bill",
+                  "label": "車ローン ¥15,000",
+                  "countdownDays": 4,
+                  "amount": 15000
+              },
+              {
+                  "date": "2026-07-04",
+                  "type": "bill",
+                  "label": "カード引落（リボ）¥27,000",
+                  "countdownDays": 12,
+                  "amount": 27000
+              }
+          ],
+          "paymentWarnings": [
+              {
+                  "message": "Netflix 解約済み — 次は Spotify",
+                  "severity": "medium"
+              }
+          ],
+          "nextBigPayment": {
+              "name": "カード引落（リボ）",
+              "daysUntil": 12,
+              "amount": 27000
+          }
+      },
+      "kpis": {
+          "projectedIncome": 185000,
+          "projectedIncomePeriod": "monthly",
+          "confirmedExpenses": 193000,
+          "confirmedExpensesPeriod": "monthly",
+          "projectedBalance": 28000,
+          "projectedBalancePeriod": "balance"
+      },
+      "fleetMetric": {
+          "lastSync": "2026-06-15T22:34:00",
+          "syncCount": 1,
+          "status": "normal",
+          "syncMethod": "給与明細",
+          "monthlyRevenueSynced": 185000,
+          "recommendedWorkDays": 0
+      },
+      "surplus": {
+          "amount": 0,
+          "amountPeriod": "balance",
+          "investmentCandidate": 0,
+          "investmentCandidatePeriod": "monthly",
+          "taxReserveSuggested": 0,
+          "taxReserveSuggestedPeriod": "monthly",
+          "aiDevBudgetSuggested": 0,
+          "aiDevBudgetSuggestedPeriod": "monthly"
+      },
+      "simulations": [
+          {
+              "id": "cancel-spotify",
+              "title": "Spotify を解約した場合",
+              "summary": "音楽サブスクを無料プランに切り替え",
+              "before": {
+                  "safety": 52,
+                  "runway": 12,
+                  "surplus": 0
+              },
+              "after": {
+                  "safety": 58,
+                  "runway": 14,
+                  "surplus": 0
+              },
+              "impacts": [
+                  "月 ¥980 削減",
+                  "Runway: 12日 → 14日",
+                  "来月の収支が改善"
+              ]
+          },
+          {
+              "id": "revo-extra-3k",
+              "title": "リボ返済を月 ¥3,000 増やした場合",
+              "summary": "利息の増え方を抑える",
+              "before": {
+                  "safety": 52,
+                  "runway": 12,
+                  "surplus": 0
+              },
+              "after": {
+                  "safety": 56,
+                  "runway": 15,
+                  "surplus": 0
+              },
+              "impacts": [
+                  "利息の増加を抑制",
+                  "Runway: 12日 → 15日"
+              ]
+          },
+          {
+              "id": "cut-food-5k",
+              "title": "食費・外食を ¥5,000 抑えた場合",
+              "summary": "コンビニ・外食を我慢",
+              "before": {
+                  "safety": 52,
+                  "runway": 12,
+                  "surplus": 0
+              },
+              "after": {
+                  "safety": 61,
+                  "runway": 16,
+                  "surplus": 0
+              },
+              "impacts": [
+                  "現金不足を回避",
+                  "Runway: 12日 → 16日"
+              ]
+          }
       ],
-      subscriptionOptimization: {
-        monthlySavingPotential: 4480,
-        yearlySavingPotential: 48960,
-        candidates: [
-          { subscriptionId: "sub-dropbox", name: "Dropbox Professional", monthlyCost: 1980, yearlySaving: 23760, reason: "過去90日間の利用実績なし", priority: 1 },
-          { subscriptionId: "sub-zoom", name: "Zoom Pro", monthlyCost: 2100, yearlySaving: 25200, reason: "Google Meetで代替可能", priority: 2 },
-        ],
-        duplicateCategories: ["design"],
-        keepRecommendations: [{ name: "Adobe Creative Cloud", reason: "FleetMetric Pro / AI開発 / 動画制作に使用" }],
-      },
-      calendarMarkers: [
-        { date: "2026-06-17", type: "work_recommended", label: "FleetMetric: 追加稼働推奨" },
-        { date: "2026-06-20", type: "withdrawal_warning", label: "家賃 引落まで3日", countdownDays: 3, amount: 88000 },
-        { date: "2026-06-25", type: "bill", label: "カード引落 ¥125,000", countdownDays: 10, amount: 125000 },
-      ],
-      paymentWarnings: [{ name: "オフィス家賃", dueDate: "2026-06-20", daysUntil: 3, amount: 88000 }],
-      nextBigPayment: { name: "ビジネスカード引落", daysUntil: 10, amount: 125000 },
-    },
-    kpis: { projectedIncome: 1250000, confirmedExpenses: 420000, projectedBalance: 882000 },
-    fleetMetric: {
-      lastSync: "2026-06-14T09:12:00",
-      syncCount: 10,
-      status: "stale",
-      syncMethod: "CSV",
-      monthlyRevenueSynced: 1250000,
-      recommendedWorkDays: 2,
-    },
-    surplus: { amount: 0, investmentCandidate: 0, taxReserveSuggested: 125000, aiDevBudgetSuggested: 0 },
-    simulations: [
-      {
-        id: "cancel-dropbox",
-        title: "Dropbox Professional を解約した場合",
-        summary: "未使用サブスク解約でキャッシュを確保",
-        before: { safety: 82, runway: 34, surplus: 0 },
-        after: { safety: 85, runway: 40, surplus: 23760 },
-        impacts: ["年間改善: ¥23,760", "Runway: 34日 → 40日"],
-      },
-      {
-        id: "work-2days",
-        title: "あと2日稼働した場合（FleetMetric Pro）",
-        summary: "FleetMetric Pro で追加稼働した場合",
-        before: { safety: 82, runway: 34, surplus: 0 },
-        after: { safety: 91, runway: 51, surplus: 48000 },
-        incomeDelta: 48000,
-        impacts: ["Safety: 82 → 91", "Runway: 34日 → 51日", "余剰資金: +¥48,000"],
-      },
-      {
-        id: "tax-10pct",
-        title: "税金積立を月10%に変更した場合",
-        summary: "納税準備強化 vs Runway trade-off",
-        before: { safety: 82, runway: 34, surplus: 0 },
-        after: { safety: 80, runway: 31, surplus: -125000 },
-        impacts: ["年末不足リスク: -35%", "Runway: 34日 → 31日"],
-      },
-    ],
-    copy: {
-      adviceText: "あと ¥18,000 で安全圏。FleetMetric Pro であと3日稼働を推奨。",
-      priorityActionsText: ["追加収入 ¥18,000 を確保", "Dropbox 解約で年間 ¥23,760 削減", "税金積立 ¥125,000 開始"],
-      subscriptionComment: "Dropbox 解約で年間 ¥23,760 削減可能",
-      usedFallback: true,
-    },
+      "copy": {
+          "adviceText": "Netflix は解約済み。まだ支出が収入を上回っています。Spotify と食費から削りましょう。",
+          "priorityActionsText": [
+              "Spotify を解約（月 ¥980 削減）",
+              "リボ返済を月 ¥3,000 増やす",
+              "外食を今週 ¥2,000 抑える"
+          ],
+          "subscriptionComment": "iCloud+ のみ維持。Spotify が次の候補",
+          "usedFallback": true
+      }
   };
 
   const DANGER_FALLBACK = {
-    metrics: {
-      status: "DANGER",
-      score: 48,
-      gapToSafety: 72000,
-      runwayDays: 12,
-      safeUntilDate: "2026-06-27",
-      projectedBalanceAfterPayments: 180000,
-      monthlyBurnRate: 380000,
-    },
-    brief: {
-      status: "DANGER",
-      score: 48,
-      gapToSafety: 72000,
-      gapWorkDays: 8,
-      runwayDays: 12,
-      safeUntilDate: "2026-06-27",
-      gapMessage: "あと ¥72,000 で安全圏です",
-      workDaysMessage: "FleetMetric Pro であと8日稼働、または支出削減が必要",
-      primaryAction: {
-        priority: 1,
-        id: "urgent-gap",
-        title: "25日のカード引落前に ¥72,000 を確保",
-        impactYen: 72000,
-        category: "income",
-        templateReason: "ビジネスカード引落 ¥125,000 の前に追加収入または支出削減が必要",
+      "asOfMonth": "2026-06",
+      "safetyBufferTarget": 50000,
+      "revolvingDebt": {
+          "balance": 520000,
+          "minimumPayment": 30000,
+          "aprPercent": 15
       },
-      priorityActions: [
-        {
-          priority: 1,
-          id: "urgent-gap",
-          title: "25日のカード引落前に ¥72,000 を確保",
-          impactYen: 72000,
-          category: "income",
-          templateReason: "追加収入または Dropbox/Zoom 解約で即効",
-        },
-        {
-          priority: 2,
-          id: "cancel-sub-dropbox",
-          title: "Dropbox Professional を即時解約（年間 ¥23,760 削減）",
-          impactYen: 23760,
-          category: "subscription",
-          templateReason: "過去90日間の利用実績なし",
-        },
-        {
-          priority: 3,
-          id: "defer-expense",
-          title: "大型支出 ¥125,000 を延期交渉",
-          impactYen: 125000,
-          category: "collection",
-          templateReason: "カード引落まで10日 — 分割または延期を検討",
-        },
+      "metrics": {
+          "status": "DANGER",
+          "score": 16,
+          "gapToSafety": 47200,
+          "runwayDays": 3,
+          "safeUntilDate": "2026-06-25",
+          "projectedBalanceAfterPayments": 2800,
+          "monthlyBurnRate": 201000
+      },
+      "brief": {
+          "status": "DANGER",
+          "score": 16,
+          "gapToSafety": 47200,
+          "gapWorkDays": 0,
+          "runwayDays": 3,
+          "safeUntilDate": "2026-06-25",
+          "gapMessage": "あと ¥47,200 — 今週が正念場です",
+          "workDaysMessage": "新規の出費は止め、引落前の現金を確保してください",
+          "primaryAction": {
+              "priority": 1,
+              "id": "urgent-revo",
+              "title": "今週のカード引落 ¥30,000 前に現金を確保",
+              "impactYen": 27200,
+              "impactPeriod": "monthly",
+              "category": "debt",
+              "templateReason": "残高 ¥2,800 — 引落でマイナスになる見込み"
+          },
+          "priorityActions": [
+              {
+                  "priority": 1,
+                  "id": "urgent-revo",
+                  "title": "今週のカード引落 ¥30,000 前に現金を確保",
+                  "impactYen": 27200,
+                  "impactPeriod": "monthly",
+                  "category": "debt",
+                  "templateReason": "口座残高 ¥2,800 — 引落で不足",
+                  "expectedEffect": "オーバードラフト・追加借入を防ぐ"
+              },
+              {
+                  "priority": 2,
+                  "id": "subscription-cleanup",
+                  "title": "Netflix・Spotify を今すぐ解約",
+                  "impactYen": 2470,
+                  "impactPeriod": "monthly",
+                  "category": "subscription",
+                  "templateReason": "来月の引落までに効く即効策",
+                  "expectedEffect": "今月の現金流出を止める"
+              },
+              {
+                  "priority": 3,
+                  "id": "defer-car-loan",
+                  "title": "車ローンの支払い日を相談（¥15,000）",
+                  "impactYen": 15000,
+                  "impactPeriod": "monthly",
+                  "category": "collection",
+                  "templateReason": "給料日と引落が重なる",
+                  "expectedEffect": "1週間の猶予を得る"
+              }
+          ],
+          "subscriptionOptimization": {
+              "monthlySubsTotal": 2870,
+              "monthlySavingPotential": 2470,
+              "yearlySavingPotential": 29640,
+              "candidates": [
+                  {
+                      "subscriptionId": "sub-netflix",
+                      "name": "Netflix",
+                      "monthlyCost": 1490,
+                      "yearlySaving": 17880,
+                      "reason": "今月の視聴は2時間のみ — 解約しても生活に影響小",
+                      "priority": 1
+                  },
+                  {
+                      "subscriptionId": "sub-spotify",
+                      "name": "Spotify",
+                      "monthlyCost": 980,
+                      "yearlySaving": 11760,
+                      "reason": "無料プランで代替可能",
+                      "priority": 2
+                  }
+              ],
+              "keepRecommendations": [
+                  {
+                      "name": "iCloud+ 200GB",
+                      "reason": "写真・書類のバックアップ用 — 月¥400のみ"
+                  }
+              ]
+          },
+          "calendarMarkers": [
+              {
+                  "date": "2026-06-22",
+                  "type": "danger",
+                  "label": "残高 ¥2,800 — 危険",
+                  "countdownDays": 0,
+                  "amount": 2800
+              },
+              {
+                  "date": "2026-06-25",
+                  "type": "danger",
+                  "label": "カード引落（リボ）¥30,000",
+                  "countdownDays": 3,
+                  "amount": 30000
+              },
+              {
+                  "date": "2026-06-26",
+                  "type": "bill",
+                  "label": "車ローン ¥15,000",
+                  "countdownDays": 4,
+                  "amount": 15000
+              },
+              {
+                  "date": "2026-06-25",
+                  "type": "income",
+                  "label": "給与入金 ¥185,000",
+                  "countdownDays": 3,
+                  "amount": 185000
+              }
+          ],
+          "paymentWarnings": [
+              {
+                  "message": "リボ残高が先月より ¥18,000 増加",
+                  "severity": "high"
+              },
+              {
+                  "message": "今週の引落で口座がマイナスになる見込み",
+                  "severity": "high"
+              }
+          ],
+          "nextBigPayment": {
+              "name": "カード引落（リボ）",
+              "daysUntil": 3,
+              "amount": 30000
+          }
+      },
+      "kpis": {
+          "projectedIncome": 185000,
+          "projectedIncomePeriod": "monthly",
+          "confirmedExpenses": 201000,
+          "confirmedExpensesPeriod": "monthly",
+          "projectedBalance": 2800,
+          "projectedBalancePeriod": "balance"
+      },
+      "fleetMetric": {
+          "lastSync": "2026-06-15T22:34:00",
+          "syncCount": 1,
+          "status": "normal",
+          "syncMethod": "給与明細",
+          "monthlyRevenueSynced": 185000,
+          "recommendedWorkDays": 0
+      },
+      "surplus": {
+          "amount": 0,
+          "amountPeriod": "balance",
+          "investmentCandidate": 0,
+          "investmentCandidatePeriod": "monthly",
+          "taxReserveSuggested": 0,
+          "taxReserveSuggestedPeriod": "monthly",
+          "aiDevBudgetSuggested": 0,
+          "aiDevBudgetSuggestedPeriod": "monthly"
+      },
+      "simulations": [
+          {
+              "id": "cancel-all-subs",
+              "title": "Netflix・Spotify を今すぐ解約した場合",
+              "summary": "来月の引落までに効く即効策",
+              "before": {
+                  "safety": 16,
+                  "runway": 3,
+                  "surplus": 0
+              },
+              "after": {
+                  "safety": 22,
+                  "runway": 5,
+                  "surplus": 0
+              },
+              "impacts": [
+                  "月 ¥2,470 削減",
+                  "Runway: 3日 → 5日",
+                  "来月の負担が軽くなる"
+              ]
+          },
+          {
+              "id": "revo-extra-10k",
+              "title": "リボ返済を月 ¥10,000 増やした場合",
+              "summary": "給料日後にまとめて返済",
+              "before": {
+                  "safety": 16,
+                  "runway": 3,
+                  "surplus": 0
+              },
+              "after": {
+                  "safety": 28,
+                  "runway": 8,
+                  "surplus": 0
+              },
+              "impacts": [
+                  "利息の増加を抑制",
+                  "Runway: 3日 → 8日"
+              ]
+          },
+          {
+              "id": "defer-car",
+              "title": "車ローンを1週間延期した場合",
+              "summary": "給料入金と引落のタイミング調整",
+              "before": {
+                  "safety": 16,
+                  "runway": 3,
+                  "surplus": 0
+              },
+              "after": {
+                  "safety": 24,
+                  "runway": 6,
+                  "surplus": 0
+              },
+              "impacts": [
+                  "Runway: 3日 → 6日",
+                  "今週の現金不足を回避"
+              ]
+          }
       ],
-      subscriptionOptimization: CAUTION_FALLBACK.brief.subscriptionOptimization,
-      calendarMarkers: [
-        { date: "2026-06-17", type: "work_recommended", label: "FleetMetric: 緊急稼働推奨" },
-        { date: "2026-06-20", type: "withdrawal_warning", label: "家賃 引落まで3日", countdownDays: 3, amount: 88000 },
-        { date: "2026-06-25", type: "danger", label: "カード引落 ¥125,000", countdownDays: 10, amount: 125000 },
-      ],
-      paymentWarnings: [{ name: "ビジネスカード引落", dueDate: "2026-06-25", daysUntil: 10, amount: 125000 }],
-      nextBigPayment: { name: "ビジネスカード引落", daysUntil: 10, amount: 125000 },
-    },
-    kpis: { projectedIncome: 980000, confirmedExpenses: 520000, projectedBalance: 180000 },
-    fleetMetric: {
-      lastSync: "2026-06-12T08:00:00",
-      syncCount: 8,
-      status: "stale",
-      syncMethod: "CSV",
-      monthlyRevenueSynced: 980000,
-      recommendedWorkDays: 8,
-    },
-    surplus: { amount: 0, investmentCandidate: 0, taxReserveSuggested: 98000, aiDevBudgetSuggested: 0 },
-    simulations: [
-      {
-        id: "work-8days",
-        title: "あと8日稼働した場合（FleetMetric Pro）",
-        summary: "緊急稼働で Gap を解消",
-        before: { safety: 48, runway: 12, surplus: 0 },
-        after: { safety: 78, runway: 38, surplus: 72000 },
-        incomeDelta: 72000,
-        impacts: ["Safety: 48 → 78", "Runway: 12日 → 38日", "Gap: ¥72,000 → ¥0"],
-      },
-      {
-        id: "cancel-dropbox",
-        title: "Dropbox + Zoom を解約した場合",
-        summary: "即効性のある支出削減",
-        before: { safety: 48, runway: 12, surplus: 0 },
-        after: { safety: 52, runway: 15, surplus: 48960 },
-        impacts: ["年間改善: ¥48,960", "Runway: 12日 → 15日"],
-      },
-      {
-        id: "defer-card",
-        title: "カード引落を1週間延期した場合",
-        summary: "キャッシュタイミングの調整",
-        before: { safety: 48, runway: 12, surplus: 0 },
-        after: { safety: 55, runway: 19, surplus: 0 },
-        impacts: ["Runway: 12日 → 19日", "25日引落リスク: 猶予7日"],
-      },
-    ],
-    copy: {
-      adviceText: "25日のカード引落前に ¥72,000 が必要。FleetMetric Pro で追加稼働、または Dropbox/Zoom 解約を即検討。",
-      priorityActionsText: ["¥72,000 を10日以内に確保", "Dropbox 即時解約", "カード引落の延期交渉"],
-      subscriptionComment: "緊急: Dropbox + Zoom 解約で年間 ¥48,960 削減",
-      usedFallback: true,
-    },
+      "copy": {
+          "adviceText": "口座残高 ¥2,800。今週のリボ引落 ¥30,000 でマイナスになります。サブスク解約と支払い日の調整が急務です。",
+          "priorityActionsText": [
+              "今週の引落前に現金を確保",
+              "Netflix・Spotify を今すぐ解約",
+              "車ローンの支払い日を相談"
+          ],
+          "subscriptionComment": "緊急: 削れるのはサブスクだけ。車ローンは維持が必要",
+          "usedFallback": true
+      }
   };
 
   global.AccApi = {
@@ -1647,6 +2980,14 @@
     renderSidebarStatus,
     statusStyle,
     bindTapScale,
+    bindDashboardCtas,
+    bindCashflowImportTabs,
+    bindSubscriptionsCtas,
+    showAccPreviewModal,
+    remountDashboard,
+    remountSubscriptions,
+    remountCashflow,
+    remountInsights,
     initResponsiveShell,
     initSurplusBrief,
     FALLBACK_DASHBOARD,
