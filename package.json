@@ -10,6 +10,8 @@
     "test": "npm run test -w @acc/finance-core",
     "dev": "npm run dev -w @acc/worker",
     "preview": "node scripts/preview-server.mjs",
+    "prepare:deploy": "node scripts/prepare-deploy.mjs",
+    "deploy": "npm run prepare:deploy && npm run deploy -w @acc/worker",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "devDependencies": {

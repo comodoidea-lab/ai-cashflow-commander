@@ -11,6 +11,7 @@ export const ESTIMATED_NEURONS_PER_CALL = 4;
 
 export interface Env {
   AI: Ai;
+  ASSETS: Fetcher;
   AI_MODEL: string;
   AI_GATEWAY_ENABLED: string;
   AI_GATEWAY_ACCOUNT_ID?: string;

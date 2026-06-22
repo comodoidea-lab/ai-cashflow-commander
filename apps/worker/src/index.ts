@@ -114,4 +114,10 @@ app.get("/api/ai/cost-estimate", (c) => {
   });
 });
 
+app.get("/", (c) => c.redirect("/_7/code.html", 302));
+
+app.all("*", async (c) => {
+  return c.env.ASSETS.fetch(c.req.raw);
+});
+
 export default app;
