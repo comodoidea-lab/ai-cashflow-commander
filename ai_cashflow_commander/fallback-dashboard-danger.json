@@ -1,4 +1,6 @@
 {
+  "asOfMonth": "2026-06",
+  "safetyBufferTarget": 900000,
   "metrics": {
     "status": "DANGER",
     "score": 48,
@@ -25,7 +27,78 @@
       "category": "income",
       "templateReason": "ビジネスカード引落 ¥125,000 の前に追加収入または支出削減が必要"
     },
+    "priorityActions": [
+      {
+        "priority": 1,
+        "id": "urgent-gap",
+        "title": "25日のカード引落前に ¥72,000 を確保",
+        "impactYen": 72000,
+        "category": "income",
+        "templateReason": "追加収入または Dropbox/Zoom 解約で即効",
+        "expectedEffect": "引落前の現金不足を回避"
+      },
+      {
+        "priority": 2,
+        "id": "cancel-sub-dropbox",
+        "title": "Dropbox Professional を即時解約（年間 ¥23,760 削減）",
+        "impactYen": 23760,
+        "category": "subscription",
+        "templateReason": "過去90日間の利用実績なし",
+        "expectedEffect": "月々の固定費を削減"
+      },
+      {
+        "priority": 3,
+        "id": "defer-expense",
+        "title": "大型支出 ¥125,000 を延期交渉",
+        "impactYen": 125000,
+        "category": "collection",
+        "templateReason": "カード引落まで10日 — 分割または延期を検討",
+        "expectedEffect": "Runwayを一時的に延長"
+      }
+    ],
+    "subscriptionOptimization": {
+      "monthlySubsTotal": 14020,
+      "monthlySavingPotential": 4480,
+      "yearlySavingPotential": 48960,
+      "candidates": [
+        {
+          "subscriptionId": "sub-dropbox",
+          "name": "Dropbox Professional",
+          "monthlyCost": 1980,
+          "yearlySaving": 23760,
+          "reason": "過去90日間の利用実績なし",
+          "priority": 1
+        },
+        {
+          "subscriptionId": "sub-zoom",
+          "name": "Zoom Pro",
+          "monthlyCost": 2100,
+          "yearlySaving": 25200,
+          "reason": "Google Meetで代替可能",
+          "priority": 2
+        }
+      ],
+      "keepRecommendations": [
+        { "name": "Adobe Creative Cloud", "reason": "FleetMetric Pro / AI開発 / 動画制作に使用" }
+      ]
+    },
+    "calendarMarkers": [
+      { "date": "2026-06-17", "type": "work_recommended", "label": "FleetMetric: 緊急稼働推奨" },
+      { "date": "2026-06-20", "type": "withdrawal_warning", "label": "家賃 引落まで3日", "countdownDays": 3, "amount": 88000 },
+      { "date": "2026-06-25", "type": "danger", "label": "カード引落 ¥125,000", "countdownDays": 10, "amount": 125000 }
+    ],
+    "paymentWarnings": [
+      { "name": "ビジネスカード引落", "dueDate": "2026-06-25", "daysUntil": 10, "amount": 125000 }
+    ],
     "nextBigPayment": { "name": "ビジネスカード引落", "daysUntil": 10, "amount": 125000 }
+  },
+  "kpis": {
+    "projectedIncome": 980000,
+    "projectedIncomePeriod": "monthly",
+    "confirmedExpenses": 520000,
+    "confirmedExpensesPeriod": "monthly",
+    "projectedBalance": 180000,
+    "projectedBalancePeriod": "balance"
   },
   "fleetMetric": {
     "lastSync": "2026-06-12T08:00:00",
@@ -34,5 +107,44 @@
     "syncMethod": "CSV",
     "monthlyRevenueSynced": 980000,
     "recommendedWorkDays": 8
+  },
+  "surplus": {
+    "amount": 0,
+    "investmentCandidate": 0,
+    "taxReserveSuggested": 98000,
+    "aiDevBudgetSuggested": 0
+  },
+  "simulations": [
+    {
+      "id": "work-8days",
+      "title": "あと8日稼働した場合（FleetMetric Pro）",
+      "summary": "緊急稼働で Gap を解消",
+      "before": { "safety": 48, "runway": 12, "surplus": 0 },
+      "after": { "safety": 78, "runway": 38, "surplus": 72000 },
+      "incomeDelta": 72000,
+      "impacts": ["Safety: 48 → 78", "Runway: 12日 → 38日", "Gap: ¥72,000 → ¥0"]
+    },
+    {
+      "id": "cancel-dropbox",
+      "title": "Dropbox + Zoom を解約した場合",
+      "summary": "即効性のある支出削減",
+      "before": { "safety": 48, "runway": 12, "surplus": 0 },
+      "after": { "safety": 52, "runway": 15, "surplus": 48960 },
+      "impacts": ["年間改善: ¥48,960", "Runway: 12日 → 15日"]
+    },
+    {
+      "id": "defer-card",
+      "title": "カード引落を1週間延期した場合",
+      "summary": "キャッシュタイミングの調整",
+      "before": { "safety": 48, "runway": 12, "surplus": 0 },
+      "after": { "safety": 55, "runway": 19, "surplus": 0 },
+      "impacts": ["Runway: 12日 → 19日", "25日引落リスク: 猶予7日"]
+    }
+  ],
+  "copy": {
+    "adviceText": "25日のカード引落前に ¥72,000 が必要。FleetMetric Pro で追加稼働、または Dropbox/Zoom 解約を即検討。",
+    "priorityActionsText": ["¥72,000 を10日以内に確保", "Dropbox 即時解約", "カード引落の延期交渉"],
+    "subscriptionComment": "緊急: Dropbox + Zoom 解約で年間 ¥48,960 削減",
+    "usedFallback": true
   }
 }
